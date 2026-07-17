@@ -15,6 +15,8 @@
  * only those.
  */
 
+import type { StandardSchemaV1 } from "./standard-schema";
+
 export type StateBase = { kind: string };
 export type ActionBase = { type: string };
 
@@ -95,6 +97,20 @@ export type Definition<S extends StateBase, A extends ActionBase, D = void> = {
   states: { [K in S["kind"]]: HandlerMap<S, A, K> };
   /** Optional entry effects, keyed by the state kinds that have one. */
   effects?: { [K in S["kind"]]?: Effect<S, A, D, K> };
+  /**
+   * Optional boundary schemas for `decodeState`/`decodeAction` — validating
+   * data that arrives from outside the type system (saved state being
+   * restored, links, server events). Typed against the machine's own unions,
+   * so a schema whose output drifts from `S`/`A` is a compile error at this
+   * property. One caveat covariance cannot catch: a schema covering only a
+   * subset of the union still compiles — avoided entirely by deriving the
+   * union types from the schemas rather than declaring them twice.
+   * Validation must be synchronous.
+   */
+  schema?: {
+    state?: StandardSchemaV1<unknown, S>;
+    action?: StandardSchemaV1<unknown, A>;
+  };
 };
 
 /** The compiled, pure engine produced by `defineMachine`. */
@@ -112,4 +128,13 @@ export type Machine<S extends StateBase, A extends ActionBase, D = void> = {
   can: (state: S, actionType: A["type"]) => boolean;
   /** The original definition, exposed for coverage helpers and devtools. */
   definition: Definition<S, A, D>;
+  /**
+   * Validate unknown data against the definition's state schema and get a
+   * typed result back — for restoring saved state and similar boundaries.
+   * Returns `{ value }` on success or `{ issues }` on failure; throws only on
+   * misconfiguration (no schema set, or an async schema).
+   */
+  decodeState: (input: unknown) => StandardSchemaV1.Result<S>;
+  /** As `decodeState`, for actions arriving from outside (links, servers). */
+  decodeAction: (input: unknown) => StandardSchemaV1.Result<A>;
 };

@@ -286,7 +286,56 @@ const t = useT();
 
 Two practical reasons: if the user switches language while an error is on screen, the message follows along on the next render; and if you ever save state and restore it later, codes stay valid while baked-in sentences go stale.
 
-### 6. Making sure nothing was forgotten
+### 6. Checking data that arrives from outside (with zod)
+
+TypeScript can only vouch for data born inside your program. Saved state you restore on the next launch, a link someone opens, an event pushed from a server — those arrive as "could be anything" and need checking at the door. Give the machine a schema and it gains two checkers: `decodeState` and `decodeAction`.
+
+minism has no schema library of its own and adds no dependency — it accepts schemas from any library that follows the [Standard Schema](https://standardschema.dev) convention (zod, valibot, arktype). Here it is with zod:
+
+```ts
+import { z } from "zod";
+import { createState, defineMachine } from "minism";
+
+// Describe the shapes once, with zod. The TypeScript types are derived from
+// the schemas, so the checking and the types can never disagree.
+const StateSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("off") }),
+  z.object({ kind: z.literal("on"), since: z.number() }),
+]);
+type SwitchState = z.infer<typeof StateSchema>;
+
+const ActionSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("powerOn"), at: z.number() }),
+  z.object({ type: z.literal("powerOff") }),
+]);
+type SwitchAction = z.infer<typeof ActionSchema>;
+
+const machine = defineMachine(
+  createState<SwitchState, SwitchAction>({
+    initial: { kind: "off" },
+    states: {
+      off: { powerOn: (_state, action) => ({ kind: "on", since: action.at }) },
+      on: { powerOff: () => ({ kind: "off" }) },
+    },
+    schema: { state: StateSchema, action: ActionSchema },
+  }),
+);
+
+// Restoring saved state when the app starts:
+const saved: unknown = JSON.parse(localStorage.getItem("switch") ?? "null");
+const restored = machine.decodeState(saved);
+const startingPoint = restored.issues ? machine.initial : restored.value;
+
+// An action arriving from a server or a link:
+const incoming = machine.decodeAction({ type: "powerOn", at: 42 });
+if (!incoming.issues) {
+  machine.advance(startingPoint, incoming.value);
+}
+```
+
+Bad data never throws — you get back either `{ value }` (checked and typed) or `{ issues }` (a list of what's wrong), and you decide what to do, as the restore line above does by falling back to the machine's initial state. Two rules: checking must be synchronous (a schema that works asynchronously is refused), and if you declare your types by hand instead of deriving them from the schema, a schema that disagrees with the types won't compile.
+
+### 7. Making sure nothing was forgotten
 
 Every state must be present in the definition — TypeScript enforces that. But forgetting to handle one *action* anywhere is only a warning at runtime. One line in a test closes the gap:
 
@@ -320,10 +369,11 @@ If a value can be calculated from data you already have ("is the cart total abov
 | `defineMachine(definition)` | Turn a definition into a runnable machine: `{ initial, advance, allowed, can, definition }`. |
 | `guarded(condition, handler)` | Put a lock on one action: the handler runs only while the condition holds. |
 | `useMachine(machine, deps?)` — from `minism/react` | Run a machine in a component: `{ state, send, allowed, can }`. |
+| `machine.decodeState(value)` / `machine.decodeAction(value)` | Check outside data against the definition's schemas; get a typed value or a list of problems. |
 | `assertCoverage(machine, allActionTypes)` | Test helper: fails if any action is handled nowhere. |
 | `createStrictState<State, Action, Deps>()(definition)` | Like `createState`, but unhandled actions fail the build. |
 | `StateOf<S, K>` / `ActionOf<A, T>` | Pick one state / action out of the union, for typing shared groups. |
-| `Definition` / `Machine` / `HandlerMap` / `Slot` / `Guarded` / `Effect` | The underlying types. |
+| `Definition` / `Machine` / `HandlerMap` / `Slot` / `Guarded` / `Effect` / `StandardSchemaV1` | The underlying types. |
 
 ## License
 

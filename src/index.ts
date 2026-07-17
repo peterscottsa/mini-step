@@ -2,6 +2,7 @@
 
 export { assertCoverage, createStrictState } from "./coverage";
 export { createState, defineMachine, guarded } from "./machine";
+export type { StandardSchemaV1 } from "./standard-schema";
 export type {
   StateBase,
   ActionBase,

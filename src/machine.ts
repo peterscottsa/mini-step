@@ -1,4 +1,5 @@
 import { inDev } from "./env";
+import type { StandardSchemaV1 } from "./standard-schema";
 import type { ActionBase, Definition, Machine, StateBase } from "./types";
 
 /**
@@ -54,6 +55,30 @@ type Table<S extends StateBase, A extends ActionBase> = Record<
 >;
 
 /**
+ * Run a Standard Schema validation for a decoder. Data failures come back as
+ * the schema's own `Result`; the two throws are misconfigurations — the
+ * caller's programming error, not bad data.
+ */
+function decodeWith<T>(
+  schema: StandardSchemaV1<unknown, T> | undefined,
+  slot: "state" | "action",
+  input: unknown,
+): StandardSchemaV1.Result<T> {
+  if (!schema) {
+    throw new Error(
+      `[minism] No ${slot} schema configured — set \`schema.${slot}\` in the definition to decode ${slot}s.`,
+    );
+  }
+  const result = schema["~standard"].validate(input);
+  if (result instanceof Promise) {
+    throw new Error(
+      "[minism] Async schemas are not supported — validation must be synchronous.",
+    );
+  }
+  return result;
+}
+
+/**
  * Compile a definition into the runnable engine. Pure and framework-free:
  * `advance` is a plain reducer, so it unit-tests without any host.
  */
@@ -101,5 +126,19 @@ export function defineMachine<
       (actionType) => can(state, actionType),
     );
 
-  return { initial: definition.initial, advance, allowed, can, definition };
+  const decodeState = (input: unknown): StandardSchemaV1.Result<S> =>
+    decodeWith(definition.schema?.state, "state", input);
+
+  const decodeAction = (input: unknown): StandardSchemaV1.Result<A> =>
+    decodeWith(definition.schema?.action, "action", input);
+
+  return {
+    initial: definition.initial,
+    advance,
+    allowed,
+    can,
+    definition,
+    decodeState,
+    decodeAction,
+  };
 }
