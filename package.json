@@ -63,7 +63,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm run test && npm run build",
+    "lint:pkg": "publint && attw --pack .",
+    "check": "npm run typecheck && npm run test && npm run build && npm run lint:pkg",
     "prepublishOnly": "npm run check"
   },
   "peerDependencies": {
@@ -78,10 +79,13 @@
     "access": "public"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@changesets/cli": "^2.31.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.17",
     "jsdom": "^29.1.1",
+    "publint": "^0.3.21",
     "react": "^19.2.7",
     "tsdown": "^0.22.9",
     "typescript": "^7.0.2",
