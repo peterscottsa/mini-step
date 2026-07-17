@@ -1,6 +1,6 @@
 {
   "name": "minism",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Tiny declarative state machines over discriminated unions — per-state typed data, shared transition groups, async as states + effects. Zero dependencies.",
   "keywords": [
     "state-machine",
@@ -28,6 +28,13 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
+  "typesVersions": {
+    "*": {
+      "react": [
+        "./dist/react.d.cts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "import": {
