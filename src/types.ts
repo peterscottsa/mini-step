@@ -36,13 +36,42 @@ export type ActionOf<A extends ActionBase, T extends A["type"]> = Extract<
 >;
 
 /**
+ * What a handler is given: one bag holding the current state and the action
+ * that just happened. Handlers destructure only what they use —
+ * `({ action }) => …` for a handler that ignores the state, `({ state }) => …`
+ * for one that ignores the action — so nothing unused ever appears.
+ *
+ * Shared groups (defined outside the steps map, so they annotate by hand) may
+ * also annotate only the fields they use; `Given` compresses the full case.
+ */
+export type HandlerArgs<
+  S extends StateBase,
+  A extends ActionBase,
+  K extends S["step"],
+  T extends A["type"],
+> = {
+  state: StateOf<S, K>;
+  action: ActionOf<A, T>;
+};
+
+/**
+ * Annotation helper for shared-group handlers: `Given<Editable>` is
+ * `{ state: Editable }`; `Given<Editable, Act<"setTitle">>` is
+ * `{ state: Editable; action: Act<"setTitle"> }`.
+ */
+export type Given<St, Ac = never> = [Ac] extends [never]
+  ? { state: St }
+  : { state: St; action: Ac };
+
+/**
  * A guarded slot, authored with the `guarded` combinator: `handle` runs only
  * while `guard(state)` returns true; otherwise the action is declined
- * (dev-warned no-op). Guards take state only — they must be pure and cheap —
- * which is what lets `allowed()` and `can()` evaluate them and stay truthful
- * for UI enable/disable. Both members are function properties, never method
- * shorthand: `strictFunctionTypes` checks properties contravariantly, which
- * is what makes shared groups containing guarded slots sound.
+ * (dev-warned no-op). Guards take the bare state — a predicate with one input
+ * needs no bag — and must be pure and cheap, which is what lets `allowed()`
+ * and `can()` evaluate them and stay truthful for UI enable/disable. Both
+ * members are function properties, never method shorthand:
+ * `strictFunctionTypes` checks properties contravariantly, which is what
+ * makes shared groups containing guarded slots sound.
  */
 export type Guarded<
   S extends StateBase,
@@ -51,7 +80,7 @@ export type Guarded<
   T extends A["type"],
 > = {
   guard: (state: StateOf<S, K>) => boolean;
-  handle: (state: StateOf<S, K>, action: ActionOf<A, T>) => S;
+  handle: (args: HandlerArgs<S, A, K, T>) => S;
 };
 
 /** One transition slot: a plain handler, or a guarded one. */
@@ -60,7 +89,7 @@ export type Slot<
   A extends ActionBase,
   K extends S["step"],
   T extends A["type"],
-> = ((state: StateOf<S, K>, action: ActionOf<A, T>) => S) | Guarded<S, A, K, T>;
+> = ((args: HandlerArgs<S, A, K, T>) => S) | Guarded<S, A, K, T>;
 
 /**
  * One state's transition table: an optional slot per action type. The keys a
@@ -88,7 +117,11 @@ export type Effect<
   A extends ActionBase,
   D,
   K extends S["step"],
-> = (state: StateOf<S, K>, deps: D, signal: AbortSignal) => Promise<A>;
+> = (args: {
+  state: StateOf<S, K>;
+  deps: D;
+  signal: AbortSignal;
+}) => Promise<A>;
 
 /** The declarative machine graph. Author it with `defineSteps`. */
 export type Definition<S extends StateBase, A extends ActionBase, D = void> = {

@@ -8,6 +8,8 @@ export type {
   ActionBase,
   StateOf,
   ActionOf,
+  HandlerArgs,
+  Given,
   Guarded,
   Slot,
   HandlerMap,

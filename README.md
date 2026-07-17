@@ -61,7 +61,7 @@ type Action = { type: "powerOn"; at: number } | { type: "powerOff" };
 const definition = defineSteps<State, Action>({
   initial: { step: "off" },
   steps: {
-    off: { powerOn: (_state, action) => ({ step: "on", turnedOnAt: action.at }) },
+    off: { powerOn: ({ action }) => ({ step: "on", turnedOnAt: action.at }) },
     on: { powerOff: () => ({ step: "off" }) },
   },
 });
@@ -73,7 +73,9 @@ machine.allowed({ step: "off" });                             // → ["powerOn"]
 machine.can({ step: "off" }, "powerOff");                     // → false
 ```
 
-Reading it out loud: "Start switched off. At the `off` step, the only thing that can happen is `powerOn`, which moves us to `on` and remembers when. at the `on` step, the only thing that can happen is `powerOff`."
+Reading it out loud: "Start switched off. At the `off` step, the only thing that can happen is `powerOn`, which moves us to `on` and remembers when. At the `on` step, the only thing that can happen is `powerOff`."
+
+Every handler is given one bag holding the current `state` and the `action` that just happened — take out only what you need. `powerOn` above only needs the action; a handler that needs neither just writes `() =>`.
 
 - `advance(state, action)` — "this happened; what's the new situation?"
 - `allowed(state)` — "what's possible right now?" (drives menus and button visibility)
@@ -87,7 +89,7 @@ A writing app where you can draft a **new** document or revise an **existing** o
 
 ```ts
 import { defineSteps, defineMachine } from "mini-step";
-import type { ActionOf, StateOf } from "mini-step";
+import type { ActionOf, Given, StateOf } from "mini-step";
 
 type FlowState =
   | { step: "home" }
@@ -107,21 +109,24 @@ type Editable = StateOf<FlowState, "drafting" | "revising">;
 type Act<T extends FlowAction["type"]> = ActionOf<FlowAction, T>;
 
 // Actions that work identically at both editing steps — written once.
+// (Groups live outside the steps map, so they say who they're for by hand:
+// `Given<Editable, …>` means "given an Editable state and this action".)
 const editDoc = {
-  setTitle: (state: Editable, action: Act<"setTitle">): FlowState => ({
+  setTitle: ({ state, action }: Given<Editable, Act<"setTitle">>): FlowState => ({
     ...state,
     title: action.title,
   }),
-  setTags: (state: Editable, action: Act<"setTags">): FlowState => ({
+  setTags: ({ state, action }: Given<Editable, Act<"setTags">>): FlowState => ({
     ...state,
     tags: action.tags,
   }),
 };
 
-// Ways out, valid from anywhere.
+// Ways out, valid from anywhere. These only need the action, so that's all
+// they mention — no state annotation at all.
 const exits = {
   goHome: (): FlowState => ({ step: "home" }),
-  saveSuccess: (_state: FlowState, action: Act<"saveSuccess">): FlowState => ({
+  saveSuccess: ({ action }: { action: Act<"saveSuccess"> }): FlowState => ({
     step: "detail",
     docId: action.docId,
   }),
@@ -166,15 +171,17 @@ const cart = defineMachine(
     initial: { step: "editing", items: [] },
     steps: {
       editing: {
-        addItem: (state, action) => ({
+        addItem: ({ state, action }) => ({
           ...state,
           items: [...state.items, action.item],
         }),
 
         // The checkout door exists, but it's locked while the cart is empty.
+        // The lock's condition takes the state directly; what happens when
+        // the door opens takes the usual bag.
         checkout: guarded(
           (state) => state.items.length > 0,
-          (state) => ({ step: "payment", items: state.items }),
+          ({ state }) => ({ step: "payment", items: state.items }),
         ),
       },
       payment: {},
@@ -228,17 +235,17 @@ const publish = defineSteps<PublishState, PublishAction, PublishDeps>({
   initial: { step: "idle" },
   steps: {
     idle: {
-      begin: (_state, action) => ({ step: "checkingQuota", size: action.size }),
+      begin: ({ action }) => ({ step: "checkingQuota", size: action.size }),
     },
     checkingQuota: {
-      quotaResolved: (state, action) =>
+      quotaResolved: ({ state, action }) =>
         action.sufficient
           ? { step: "uploading", size: state.size }
           : { step: "failed", reason: "quotaExceeded", retryable: false },
       cancel: () => ({ step: "idle" }),
     },
     uploading: {
-      uploadSucceeded: (_state, action) => ({ step: "done", url: action.url }),
+      uploadSucceeded: ({ action }) => ({ step: "done", url: action.url }),
       uploadFailed: () => ({ step: "failed", reason: "network", retryable: true }),
       cancel: () => ({ step: "idle" }),
     },
@@ -247,11 +254,11 @@ const publish = defineSteps<PublishState, PublishAction, PublishDeps>({
   },
   effects: {
     // Entering checkingQuota starts this; its answer comes back as an action.
-    checkingQuota: async (state, deps) => ({
+    checkingQuota: async ({ state, deps }) => ({
       type: "quotaResolved",
       sufficient: await deps.hasQuota(state.size),
     }),
-    uploading: async (state, deps, signal) => {
+    uploading: async ({ state, deps, signal }) => {
       try {
         const { url } = await deps.upload(state.size, signal);
         return { type: "uploadSucceeded", url };
@@ -345,7 +352,7 @@ const machine = defineMachine(
   defineSteps<SwitchState, SwitchAction>({
     initial: { step: "off" },
     steps: {
-      off: { powerOn: (_state, action) => ({ step: "on", turnedOnAt: action.at }) },
+      off: { powerOn: ({ action }) => ({ step: "on", turnedOnAt: action.at }) },
       on: { powerOff: () => ({ step: "off" }) },
     },
     schema: { state: StateSchema, action: ActionSchema },
@@ -404,7 +411,8 @@ If a value can be calculated from data you already have ("is the cart total abov
 | `assertCoverage(machine, allActionTypes)` | Test helper: fails if any action is handled nowhere. |
 | `defineStrictSteps<State, Action, Deps>()(definition)` | Like `defineSteps`, but unhandled actions fail the build. |
 | `StateOf<S, K>` / `ActionOf<A, T>` | Pick one state / action out of the union, for typing shared groups. |
-| `Definition` / `Machine` / `HandlerMap` / `Slot` / `Guarded` / `Effect` / `StandardSchemaV1` | The underlying types. |
+| `Given<St, Ac?>` | Annotation helper for shared-group handlers: the `{ state }` or `{ state, action }` bag. |
+| `Definition` / `Machine` / `HandlerMap` / `HandlerArgs` / `Slot` / `Guarded` / `Effect` / `StandardSchemaV1` | The underlying types. |
 
 ## License
 

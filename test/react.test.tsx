@@ -149,7 +149,10 @@ describe("useMachine", () => {
           counting: {
             increment: guarded(
               (state: CountState) => state.n < 2,
-              (state: CountState): CountState => ({ step: "counting", n: state.n + 1 }),
+              ({ state }: { state: CountState }): CountState => ({
+                step: "counting",
+                n: state.n + 1,
+              }),
             ),
           },
         },
@@ -202,12 +205,12 @@ describe("useMachine", () => {
         initial: { step: "loading" },
         steps: {
           loading: {
-            finish: (_state, action) => ({ step: "loaded", value: action.value }),
+            finish: ({ action }) => ({ step: "loaded", value: action.value }),
           },
           loaded: {},
         },
         effects: {
-          loading: async (_state, _deps, signal) => {
+          loading: async ({ signal }) => {
             runs.push(signal);
             return { type: "finish", value: runs.length };
           },

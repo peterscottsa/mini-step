@@ -16,7 +16,7 @@ test("defineStrictSteps accepts a definition that handles every action", () => {
     initial: { step: "off" },
     steps: {
       on: {
-        toggle: (state) => {
+        toggle: ({ state }) => {
           // The constraint still contextually narrows handler parameters.
           expectTypeOf(state).toEqualTypeOf<StateOf<ToggleState, "on">>();
           return { step: "off" };

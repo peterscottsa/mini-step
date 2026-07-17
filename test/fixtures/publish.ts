@@ -34,18 +34,18 @@ export const publishDefinition = defineSteps<
   initial: { step: "idle" },
   steps: {
     idle: {
-      begin: (_state, action) => ({ step: "checkingQuota", size: action.size }),
+      begin: ({ action }) => ({ step: "checkingQuota", size: action.size }),
     },
     checkingQuota: {
-      quotaResolved: (state, action) =>
+      quotaResolved: ({ state, action }) =>
         action.sufficient
           ? { step: "uploading", size: state.size }
           : { step: "failed", reason: "Not enough space", retryable: false },
       cancel: () => ({ step: "idle" }),
     },
     uploading: {
-      uploadSucceeded: (_state, action) => ({ step: "done", url: action.url }),
-      uploadFailed: (_state, action) => ({
+      uploadSucceeded: ({ action }) => ({ step: "done", url: action.url }),
+      uploadFailed: ({ action }) => ({
         step: "failed",
         reason: action.message,
         retryable: true,
@@ -59,11 +59,11 @@ export const publishDefinition = defineSteps<
     done: {},
   },
   effects: {
-    checkingQuota: async (state, deps) => ({
+    checkingQuota: async ({ state, deps }) => ({
       type: "quotaResolved",
       sufficient: await deps.hasQuota(state.size),
     }),
-    uploading: async (state, deps, signal) => {
+    uploading: async ({ state, deps, signal }) => {
       try {
         const { url } = await deps.upload(state.size, signal);
         return { type: "uploadSucceeded", url };

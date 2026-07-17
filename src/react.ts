@@ -27,7 +27,11 @@ export type UseMachineResult<S extends StateBase, A extends ActionBase> = {
 type EffectTable<S extends StateBase, A extends ActionBase, D> =
   | Record<
       string,
-      | ((state: S, deps: D | undefined, signal: AbortSignal) => Promise<A>)
+      | ((args: {
+          state: S;
+          deps: D | undefined;
+          signal: AbortSignal;
+        }) => Promise<A>)
       | undefined
     >
   | undefined;
@@ -75,7 +79,7 @@ export function useMachine<S extends StateBase, A extends ActionBase, D>(
     if (!effect) return;
     const controller = new AbortController();
     const { signal } = controller;
-    effect(state, depsRef.current, signal).then(
+    effect({ state, deps: depsRef.current, signal }).then(
       (action) => {
         if (!signal.aborted) dispatch(action);
       },

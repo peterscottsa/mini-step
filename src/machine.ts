@@ -26,12 +26,14 @@ export function defineSteps<
  * the handler instead — it has the payload and can branch to a failure state.
  *
  * Like plain handlers, guarded slots travel inside shared groups: annotate
- * the parameters with the widest state union the slot is valid for.
+ * with the widest state union the slot is valid for. The guard takes the bare
+ * state (a one-input predicate needs no bag); `handle` takes the same
+ * `{ state, action }` bag as plain handlers.
  */
-export function guarded<St, Ac, S extends StateBase>(
+export function guarded<St, Args, S extends StateBase>(
   guard: (state: St) => boolean,
-  handle: (state: St, action: Ac) => S,
-): { guard: (state: St) => boolean; handle: (state: St, action: Ac) => S } {
+  handle: (args: Args) => S,
+): { guard: (state: St) => boolean; handle: (args: Args) => S } {
   return { guard, handle };
 }
 
@@ -46,8 +48,11 @@ export function guarded<St, Ac, S extends StateBase>(
  * shared-group authoring).
  */
 type WidenedSlot<S extends StateBase, A extends ActionBase> =
-  | ((state: S, action: A) => S)
-  | { guard: (state: S) => boolean; handle: (state: S, action: A) => S };
+  | ((args: { state: S; action: A }) => S)
+  | {
+      guard: (state: S) => boolean;
+      handle: (args: { state: S; action: A }) => S;
+    };
 
 type Table<S extends StateBase, A extends ActionBase> = Record<
   string,
@@ -100,7 +105,7 @@ export function defineMachine<
       return state;
     }
     if (typeof slot === "function") {
-      return slot(state, action);
+      return slot({ state, action });
     }
     if (!slot.guard(state)) {
       if (inDev()) {
@@ -110,7 +115,7 @@ export function defineMachine<
       }
       return state;
     }
-    return slot.handle(state, action);
+    return slot.handle({ state, action });
   };
 
   const can = (state: S, actionType: A["type"]): boolean => {

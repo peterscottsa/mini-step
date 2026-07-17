@@ -15,7 +15,7 @@ const ActionSchema = z.discriminatedUnion("type", [
 type SwitchAction = z.infer<typeof ActionSchema>;
 
 const steps: Definition<SwitchState, SwitchAction>["steps"] = {
-  off: { powerOn: (_state, action) => ({ step: "on", turnedOnAt: action.at }) },
+  off: { powerOn: ({ action }) => ({ step: "on", turnedOnAt: action.at }) },
   on: { powerOff: () => ({ step: "off" }) },
 };
 

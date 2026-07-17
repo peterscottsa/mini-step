@@ -1,6 +1,6 @@
 import { expectTypeOf, test } from "vitest";
 import { guarded } from "../src/index";
-import type { Definition, HandlerMap, StateOf } from "../src/index";
+import type { Definition, Given, HandlerMap, StateOf } from "../src/index";
 import { editDoc, exits } from "./fixtures/flow";
 import type { Act, Editable, FlowAction, FlowState, Previous } from "./fixtures/flow";
 
@@ -13,12 +13,12 @@ test("StateOf and ActionOf extract exact union members", () => {
   }>();
 });
 
-test("handler slots narrow state and action to their exact pair", () => {
+test("handler bags narrow state and action to their exact pair", () => {
   const _def: Definition<FlowState, FlowAction> = {
     initial: { step: "home" },
     steps: {
       home: {
-        startDraft: (state, action) => {
+        startDraft: ({ state, action }) => {
           expectTypeOf(state).toEqualTypeOf<StateOf<FlowState, "home">>();
           expectTypeOf(action).toEqualTypeOf<Act<"startDraft">>();
           return { step: "drafting", view: "outline", title: "", tags: [] };
@@ -27,11 +27,35 @@ test("handler slots narrow state and action to their exact pair", () => {
       list: {},
       detail: {},
       drafting: {
-        setTitle: (state, action) => {
+        setTitle: ({ state, action }) => {
           expectTypeOf(state).toEqualTypeOf<StateOf<FlowState, "drafting">>();
           expectTypeOf(action).toEqualTypeOf<Act<"setTitle">>();
           return { ...state, title: action.title };
         },
+      },
+      revising: {},
+    },
+  };
+});
+
+test("handlers destructure only the bag fields they use, inline", () => {
+  const _def: Definition<FlowState, FlowAction> = {
+    initial: { step: "home" },
+    steps: {
+      home: {},
+      list: {},
+      detail: {},
+      drafting: {
+        // Action-only: state never appears.
+        saveSuccess: ({ action }) => ({
+          step: "detail",
+          docId: action.docId,
+          previous: "home",
+        }),
+        // State-only: action never appears.
+        showOutline: ({ state }) => ({ ...state, view: "outline" }),
+        // Neither: an empty parameter list.
+        goHome: () => ({ step: "home" }),
       },
       revising: {},
     },
@@ -75,7 +99,7 @@ test("guarded slots infer their parameters when written inline", () => {
       drafting: {
         setTags: guarded(
           (state) => state.tags.length < 5,
-          (state, action) => {
+          ({ state, action }) => {
             expectTypeOf(state).toEqualTypeOf<StateOf<FlowState, "drafting">>();
             expectTypeOf(action).toEqualTypeOf<Act<"setTags">>();
             return { ...state, tags: action.tags };
@@ -97,7 +121,7 @@ test("guarded slots type-check inline with annotated parameters", () => {
       drafting: {
         setTags: guarded(
           (state: Editable) => state.tags.length < 5,
-          (state: Editable, action: Act<"setTags">): FlowState => ({
+          ({ state, action }: Given<Editable, Act<"setTags">>): FlowState => ({
             ...state,
             tags: action.tags,
           }),
@@ -108,10 +132,18 @@ test("guarded slots type-check inline with annotated parameters", () => {
   };
 });
 
+test("Given expands to the state-only or state-and-action bag", () => {
+  expectTypeOf<Given<Editable>>().toEqualTypeOf<{ state: Editable }>();
+  expectTypeOf<Given<Editable, Act<"setTitle">>>().toEqualTypeOf<{
+    state: Editable;
+    action: Act<"setTitle">;
+  }>();
+});
+
 test("unknown action keys are rejected", () => {
   const _map: HandlerMap<FlowState, FlowAction, "drafting"> = {
     // @ts-expect-error 'setTitel' is not an action type
-    setTitel: (state: Editable): FlowState => state,
+    setTitel: ({ state }: Given<Editable>): FlowState => state,
   };
 });
 
@@ -134,7 +166,7 @@ test("every step must be present in the steps map", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Effects (async fixture-in-miniature; the full async fixture lands in step 4).
+// Effects (async fixture-in-miniature; the full async fixture is publish.ts).
 // ---------------------------------------------------------------------------
 
 type SearchState =
@@ -156,17 +188,17 @@ test("effects narrow their state and receive typed deps and a signal", () => {
     initial: { step: "idle" },
     steps: {
       idle: {
-        search: (_state, action) => ({ step: "searching", query: action.query }),
+        search: ({ action }) => ({ step: "searching", query: action.query }),
       },
       searching: {
-        resolved: (_state, action) =>
+        resolved: ({ action }) =>
           action.found ? { step: "idle" } : { step: "failed", reason: "no matches" },
         cancel: () => ({ step: "idle" }),
       },
       failed: {},
     },
     effects: {
-      searching: async (state, deps, signal) => {
+      searching: async ({ state, deps, signal }) => {
         expectTypeOf(state).toEqualTypeOf<StateOf<SearchState, "searching">>();
         expectTypeOf(deps).toEqualTypeOf<SearchDeps>();
         expectTypeOf(signal).toEqualTypeOf<AbortSignal>();

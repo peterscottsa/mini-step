@@ -4,7 +4,7 @@
  * every transition.
  */
 import { defineSteps, defineMachine, guarded } from "../../src/index";
-import type { ActionOf, StateOf } from "../../src/index";
+import type { ActionOf, Given, StateOf } from "../../src/index";
 
 export type View = "outline" | "preview";
 export type Previous = "home" | "list";
@@ -52,12 +52,13 @@ export type Act<T extends FlowAction["type"]> = ActionOf<FlowAction, T>;
 export const exits = {
   goHome: (): FlowState => ({ step: "home" }),
   viewList: (): FlowState => ({ step: "list" }),
-  viewDoc: (_state: FlowState, action: Act<"viewDoc">): FlowState => ({
+  // Action-only handlers annotate only the action — no state mention at all.
+  viewDoc: ({ action }: { action: Act<"viewDoc"> }): FlowState => ({
     step: "detail",
     docId: action.docId,
     previous: action.previous,
   }),
-  saveSuccess: (_state: FlowState, action: Act<"saveSuccess">): FlowState => ({
+  saveSuccess: ({ action }: { action: Act<"saveSuccess"> }): FlowState => ({
     step: "detail",
     docId: action.docId,
     previous: "home",
@@ -65,18 +66,22 @@ export const exits = {
 };
 
 export const editDoc = {
-  showOutline: (state: Editable): FlowState => ({ ...state, view: "outline" }),
+  // State-only handlers annotate only the state, via the Given helper.
+  showOutline: ({ state }: Given<Editable>): FlowState => ({
+    ...state,
+    view: "outline",
+  }),
   // Guarded slot inside a shared group: previewing needs a title. Travels
   // into both `drafting` and `revising` like any other group member.
   showPreview: guarded(
     (state: Editable) => state.title !== "",
-    (state: Editable): FlowState => ({ ...state, view: "preview" }),
+    ({ state }: Given<Editable>): FlowState => ({ ...state, view: "preview" }),
   ),
-  setTitle: (state: Editable, action: Act<"setTitle">): FlowState => ({
+  setTitle: ({ state, action }: Given<Editable, Act<"setTitle">>): FlowState => ({
     ...state,
     title: action.title,
   }),
-  setTags: (state: Editable, action: Act<"setTags">): FlowState => ({
+  setTags: ({ state, action }: Given<Editable, Act<"setTags">>): FlowState => ({
     ...state,
     tags: action.tags,
   }),
@@ -89,13 +94,13 @@ const begin = {
     title: "",
     tags: [],
   }),
-  resumeDraft: (_state: FlowState, action: Act<"resumeDraft">): FlowState => ({
+  resumeDraft: ({ action }: { action: Act<"resumeDraft"> }): FlowState => ({
     step: "drafting",
     view: "outline",
     title: action.title,
     tags: action.tags,
   }),
-  enterRevise: (_state: FlowState, action: Act<"enterRevise">): FlowState => ({
+  enterRevise: ({ action }: { action: Act<"enterRevise"> }): FlowState => ({
     step: "revising",
     view: "outline",
     docId: action.docId,

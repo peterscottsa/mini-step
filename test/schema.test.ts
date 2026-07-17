@@ -22,7 +22,7 @@ const switchMachine = defineMachine(
     initial: { step: "off" },
     steps: {
       off: {
-        powerOn: (_state, action) => ({ step: "on", turnedOnAt: action.at }),
+        powerOn: ({ action }) => ({ step: "on", turnedOnAt: action.at }),
       },
       on: { powerOff: () => ({ step: "off" }) },
     },
@@ -65,7 +65,7 @@ describe("decodeState / decodeAction", () => {
       defineSteps<SwitchState, SwitchAction>({
         initial: { step: "off" },
         steps: {
-          off: { powerOn: (_state, action) => ({ step: "on", turnedOnAt: action.at }) },
+          off: { powerOn: ({ action }) => ({ step: "on", turnedOnAt: action.at }) },
           on: { powerOff: () => ({ step: "off" }) },
         },
       }),
@@ -92,7 +92,7 @@ describe("decodeState / decodeAction", () => {
       defineSteps<SwitchState, SwitchAction>({
         initial: { step: "off" },
         steps: {
-          off: { powerOn: (_state, action) => ({ step: "on", turnedOnAt: action.at }) },
+          off: { powerOn: ({ action }) => ({ step: "on", turnedOnAt: action.at }) },
           on: { powerOff: () => ({ step: "off" }) },
         },
         schema: { state: asyncSchema },
@@ -120,7 +120,7 @@ describe("decodeState / decodeAction", () => {
       defineSteps<SwitchState, SwitchAction>({
         initial: { step: "off" },
         steps: {
-          off: { powerOn: (_state, action) => ({ step: "on", turnedOnAt: action.at }) },
+          off: { powerOn: ({ action }) => ({ step: "on", turnedOnAt: action.at }) },
           on: { powerOff: () => ({ step: "off" }) },
         },
         schema: { state: handRolled },
