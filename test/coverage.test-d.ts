@@ -1,5 +1,5 @@
 import { expectTypeOf, test } from "vitest";
-import { assertCoverage, createStrictState } from "../src/index";
+import { assertCoverage, defineStrictSteps } from "../src/index";
 import type { StateOf } from "../src/index";
 import { flowMachine } from "./fixtures/flow";
 
@@ -11,10 +11,10 @@ test("assertCoverage rejects an incomplete action-type list", () => {
   assertCoverage(flowMachine, ["goHome", "viewList"]);
 });
 
-test("createStrictState accepts a definition that handles every action", () => {
-  createStrictState<ToggleState, ToggleAction>()({
+test("defineStrictSteps accepts a definition that handles every action", () => {
+  defineStrictSteps<ToggleState, ToggleAction>()({
     initial: { step: "off" },
-    states: {
+    steps: {
       on: {
         toggle: (state) => {
           // The constraint still contextually narrows handler parameters.
@@ -28,11 +28,11 @@ test("createStrictState accepts a definition that handles every action", () => {
   });
 });
 
-test("createStrictState rejects a definition with an unhandled action", () => {
+test("defineStrictSteps rejects a definition with an unhandled action", () => {
   // @ts-expect-error 'reset' and 'disable' are handled by no state
-  createStrictState<ToggleState, ToggleAction>()({
+  defineStrictSteps<ToggleState, ToggleAction>()({
     initial: { step: "off" },
-    states: {
+    steps: {
       on: { toggle: () => ({ step: "off" }) },
       off: { toggle: () => ({ step: "on" }) },
     },

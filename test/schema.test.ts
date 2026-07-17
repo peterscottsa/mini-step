@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { createState, defineMachine } from "../src/index";
+import { defineSteps, defineMachine } from "../src/index";
 import type { StandardSchemaV1 } from "../src/index";
 
 // The recommended recipe: derive the union types FROM the schemas, so the
 // types and the validation can never drift apart.
 const StateSchema = z.discriminatedUnion("step", [
   z.object({ step: z.literal("off") }),
-  z.object({ step: z.literal("on"), since: z.number() }),
+  z.object({ step: z.literal("on"), turnedOnAt: z.number() }),
 ]);
 type SwitchState = z.infer<typeof StateSchema>;
 
@@ -18,11 +18,11 @@ const ActionSchema = z.discriminatedUnion("type", [
 type SwitchAction = z.infer<typeof ActionSchema>;
 
 const switchMachine = defineMachine(
-  createState<SwitchState, SwitchAction>({
+  defineSteps<SwitchState, SwitchAction>({
     initial: { step: "off" },
-    states: {
+    steps: {
       off: {
-        powerOn: (_state, action) => ({ step: "on", since: action.at }),
+        powerOn: (_state, action) => ({ step: "on", turnedOnAt: action.at }),
       },
       on: { powerOff: () => ({ step: "off" }) },
     },
@@ -32,9 +32,9 @@ const switchMachine = defineMachine(
 
 describe("decodeState / decodeAction", () => {
   it("returns a typed value for data that matches the schema", () => {
-    const result = switchMachine.decodeState({ step: "on", since: 5 });
+    const result = switchMachine.decodeState({ step: "on", turnedOnAt: 5 });
     expect(result.issues).toBeUndefined();
-    expect(result).toEqual({ value: { step: "on", since: 5 } });
+    expect(result).toEqual({ value: { step: "on", turnedOnAt: 5 } });
   });
 
   it("returns issues, not a throw, for data that does not match", () => {
@@ -50,7 +50,7 @@ describe("decodeState / decodeAction", () => {
     expect(result.issues).toBeUndefined();
     if (!result.issues) {
       const next = switchMachine.advance(switchMachine.initial, result.value);
-      expect(next).toEqual({ step: "on", since: 42 });
+      expect(next).toEqual({ step: "on", turnedOnAt: 42 });
     }
   });
 
@@ -62,10 +62,10 @@ describe("decodeState / decodeAction", () => {
 
   it("throws a misconfiguration error when no schema is set", () => {
     const bare = defineMachine(
-      createState<SwitchState, SwitchAction>({
+      defineSteps<SwitchState, SwitchAction>({
         initial: { step: "off" },
-        states: {
-          off: { powerOn: (_state, action) => ({ step: "on", since: action.at }) },
+        steps: {
+          off: { powerOn: (_state, action) => ({ step: "on", turnedOnAt: action.at }) },
           on: { powerOff: () => ({ step: "off" }) },
         },
       }),
@@ -89,10 +89,10 @@ describe("decodeState / decodeAction", () => {
     };
 
     const machine = defineMachine(
-      createState<SwitchState, SwitchAction>({
+      defineSteps<SwitchState, SwitchAction>({
         initial: { step: "off" },
-        states: {
-          off: { powerOn: (_state, action) => ({ step: "on", since: action.at }) },
+        steps: {
+          off: { powerOn: (_state, action) => ({ step: "on", turnedOnAt: action.at }) },
           on: { powerOff: () => ({ step: "off" }) },
         },
         schema: { state: asyncSchema },
@@ -117,10 +117,10 @@ describe("decodeState / decodeAction", () => {
     };
 
     const machine = defineMachine(
-      createState<SwitchState, SwitchAction>({
+      defineSteps<SwitchState, SwitchAction>({
         initial: { step: "off" },
-        states: {
-          off: { powerOn: (_state, action) => ({ step: "on", since: action.at }) },
+        steps: {
+          off: { powerOn: (_state, action) => ({ step: "on", turnedOnAt: action.at }) },
           on: { powerOff: () => ({ step: "off" }) },
         },
         schema: { state: handRolled },

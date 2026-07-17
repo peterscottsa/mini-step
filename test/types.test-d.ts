@@ -16,7 +16,7 @@ test("StateOf and ActionOf extract exact union members", () => {
 test("handler slots narrow state and action to their exact pair", () => {
   const _def: Definition<FlowState, FlowAction> = {
     initial: { step: "home" },
-    states: {
+    steps: {
       home: {
         startDraft: (state, action) => {
           expectTypeOf(state).toEqualTypeOf<StateOf<FlowState, "home">>();
@@ -41,7 +41,7 @@ test("handler slots narrow state and action to their exact pair", () => {
 test("shared groups spread into every state they are valid for", () => {
   const _def: Definition<FlowState, FlowAction> = {
     initial: { step: "home" },
-    states: {
+    steps: {
       home: { ...exits },
       list: { ...exits },
       detail: { ...exits },
@@ -68,7 +68,7 @@ test("a guarded slot cannot drop into a state outside its union either", () => {
 test("guarded slots infer their parameters when written inline", () => {
   const _def: Definition<FlowState, FlowAction> = {
     initial: { step: "home" },
-    states: {
+    steps: {
       home: {},
       list: {},
       detail: {},
@@ -90,7 +90,7 @@ test("guarded slots infer their parameters when written inline", () => {
 test("guarded slots type-check inline with annotated parameters", () => {
   const _def: Definition<FlowState, FlowAction> = {
     initial: { step: "home" },
-    states: {
+    steps: {
       home: {},
       list: {},
       detail: {},
@@ -122,15 +122,15 @@ test("handlers must return the state union", () => {
   };
 });
 
-test("every step must be present in the states map", () => {
+test("every step must be present in the steps map", () => {
   const missingRevising = {
     home: {},
     list: {},
     detail: {},
     drafting: {},
   };
-  // @ts-expect-error states must name every step — 'revising' is missing
-  const _def: Definition<FlowState, FlowAction> = { initial: { step: "home" }, states: missingRevising };
+  // @ts-expect-error steps must name every step — 'revising' is missing
+  const _def: Definition<FlowState, FlowAction> = { initial: { step: "home" }, steps: missingRevising };
 });
 
 // ---------------------------------------------------------------------------
@@ -154,7 +154,7 @@ type SearchDeps = {
 test("effects narrow their state and receive typed deps and a signal", () => {
   const _def: Definition<SearchState, SearchAction, SearchDeps> = {
     initial: { step: "idle" },
-    states: {
+    steps: {
       idle: {
         search: (_state, action) => ({ step: "searching", query: action.query }),
       },
@@ -182,7 +182,7 @@ test("effects narrow their state and receive typed deps and a signal", () => {
 test("effects only accept known steps", () => {
   const _def: Definition<SearchState, SearchAction, SearchDeps> = {
     initial: { step: "idle" },
-    states: { idle: {}, searching: {}, failed: {} },
+    steps: { idle: {}, searching: {}, failed: {} },
     effects: {
       // @ts-expect-error 'saving' is not a step of the machine
       saving: async () => ({ type: "cancel" }),

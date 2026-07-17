@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertCoverage, createStrictState, defineMachine, guarded } from "../src/index";
+import { assertCoverage, defineStrictSteps, defineMachine, guarded } from "../src/index";
 import { flowMachine } from "./fixtures/flow";
 import { publishMachine } from "./fixtures/publish";
 
@@ -37,7 +37,7 @@ describe("assertCoverage", () => {
   it("counts guarded slots as handled", () => {
     const machine = defineMachine<ToggleState, ToggleAction>({
       initial: { step: "off" },
-      states: {
+      steps: {
         on: {
           toggle: () => ({ step: "off" }),
           disable: guarded(
@@ -55,7 +55,7 @@ describe("assertCoverage", () => {
   it("throws, naming every action type no state handles", () => {
     const machine = defineMachine<ToggleState, ToggleAction>({
       initial: { step: "off" },
-      states: {
+      steps: {
         on: { toggle: () => ({ step: "off" }) },
         off: { toggle: () => ({ step: "on" }) },
       },
@@ -69,11 +69,11 @@ describe("assertCoverage", () => {
   });
 });
 
-describe("createStrictState", () => {
+describe("defineStrictSteps", () => {
   it("is identity at runtime and composes with defineMachine", () => {
-    const definition = createStrictState<ToggleState, ToggleAction>()({
+    const definition = defineStrictSteps<ToggleState, ToggleAction>()({
       initial: { step: "off" },
-      states: {
+      steps: {
         on: { toggle: () => ({ step: "off" }), disable: () => ({ step: "off" }) },
         off: { toggle: () => ({ step: "on" }), reset: () => ({ step: "off" }) },
       },

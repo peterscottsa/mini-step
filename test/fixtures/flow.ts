@@ -1,9 +1,9 @@
 /**
- * A document-drafting flow — the sync fixture with overlapping states:
+ * A document-drafting flow — the sync fixture with overlapping steps:
  * `drafting` (a new document) and `revising` (an existing one) share almost
  * every transition.
  */
-import { createState, defineMachine, guarded } from "../../src/index";
+import { defineSteps, defineMachine, guarded } from "../../src/index";
 import type { ActionOf, StateOf } from "../../src/index";
 
 export type View = "outline" | "preview";
@@ -35,7 +35,7 @@ export type FlowAction =
   | { type: "setTags"; tags: string[] }
   | { type: "saveSuccess"; docId: string };
 
-/** The overlapping pair: the states that share the document-editing transitions. */
+/** The overlapping pair: the steps that share the document-editing transitions. */
 export type Editable = StateOf<FlowState, "drafting" | "revising">;
 
 /** Ergonomic local alias for this flow's actions. */
@@ -46,7 +46,7 @@ export type Act<T extends FlowAction["type"]> = ActionOf<FlowAction, T>;
 // A handler that ignores `state` (or types it over the full union) drops into
 // any state; a handler that reads `state: Editable` drops into drafting and
 // revising only. Explicit parameter types are required because the groups are
-// defined outside the states map.
+// defined outside the steps map.
 // ---------------------------------------------------------------------------
 
 export const exits = {
@@ -104,9 +104,9 @@ const begin = {
   }),
 };
 
-export const flowDefinition = createState<FlowState, FlowAction>({
+export const flowDefinition = defineSteps<FlowState, FlowAction>({
   initial: { step: "home" },
-  states: {
+  steps: {
     home: { ...begin, viewList: exits.viewList, viewDoc: exits.viewDoc },
     list: { viewDoc: exits.viewDoc, goHome: exits.goHome },
     detail: {

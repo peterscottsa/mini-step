@@ -4,7 +4,7 @@
  * never block. Effects map their own errors to a failure action, so the
  * transition table stays the only place that decides where the machine goes.
  */
-import { createState, defineMachine } from "../../src/index";
+import { defineSteps, defineMachine } from "../../src/index";
 
 export type PublishState =
   | { step: "idle" }
@@ -26,13 +26,13 @@ export type PublishDeps = {
   upload: (size: number, signal: AbortSignal) => Promise<{ url: string }>;
 };
 
-export const publishDefinition = createState<
+export const publishDefinition = defineSteps<
   PublishState,
   PublishAction,
   PublishDeps
 >({
   initial: { step: "idle" },
-  states: {
+  steps: {
     idle: {
       begin: (_state, action) => ({ step: "checkingQuota", size: action.size }),
     },

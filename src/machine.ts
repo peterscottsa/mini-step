@@ -7,7 +7,7 @@ import type { ActionBase, Definition, Machine, StateBase } from "./types";
  * parameters in one place so every handler slot in the definition literal is
  * narrowed to its exact (step, action type) pair.
  */
-export function createState<
+export function defineSteps<
   S extends StateBase,
   A extends ActionBase,
   D = void,
@@ -36,7 +36,7 @@ export function guarded<St, Ac, S extends StateBase>(
 }
 
 /**
- * Internal, deliberately widened view of the states map. TypeScript cannot
+ * Internal, deliberately widened view of the steps map. TypeScript cannot
  * correlate `state.step` with the map key it came from (the correlated-union
  * limitation), so the engine goes through this cast; the `Definition` type
  * guarantees by construction that every stored slot matches its position.
@@ -87,7 +87,7 @@ export function defineMachine<
   A extends ActionBase,
   D = void,
 >(definition: Definition<S, A, D>): Machine<S, A, D> {
-  const table = definition.states as Table<S, A>;
+  const table = definition.steps as Table<S, A>;
 
   const advance = (state: S, action: A): S => {
     const slot = table[state.step]?.[action.type];

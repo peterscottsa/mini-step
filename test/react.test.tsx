@@ -2,7 +2,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createState, defineMachine, guarded } from "../src/index";
+import { defineSteps, defineMachine, guarded } from "../src/index";
 import { useMachine } from "../src/react";
 import { publishMachine } from "./fixtures/publish";
 import type { PublishDeps } from "./fixtures/publish";
@@ -143,9 +143,9 @@ describe("useMachine", () => {
     type CountState = { step: "counting"; n: number };
     type CountAction = { type: "increment" };
     const capped = defineMachine(
-      createState<CountState, CountAction>({
+      defineSteps<CountState, CountAction>({
         initial: { step: "counting", n: 0 },
-        states: {
+        steps: {
           counting: {
             increment: guarded(
               (state: CountState) => state.n < 2,
@@ -176,9 +176,9 @@ describe("useMachine", () => {
     type S = { step: "loading" } | { step: "loaded" };
     type A = { type: "finish" };
     const rejecting = defineMachine(
-      createState<S, A>({
+      defineSteps<S, A>({
         initial: { step: "loading" },
-        states: { loading: { finish: () => ({ step: "loaded" }) }, loaded: {} },
+        steps: { loading: { finish: () => ({ step: "loaded" }) }, loaded: {} },
         effects: {
           loading: () => Promise.reject(new Error("boom")),
         },
@@ -198,9 +198,9 @@ describe("useMachine", () => {
     type A = { type: "finish"; value: number };
     const runs: AbortSignal[] = [];
     const strict = defineMachine(
-      createState<S, A>({
+      defineSteps<S, A>({
         initial: { step: "loading" },
-        states: {
+        steps: {
           loading: {
             finish: (_state, action) => ({ step: "loaded", value: action.value }),
           },

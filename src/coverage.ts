@@ -8,7 +8,7 @@ import type { ActionBase, Definition, Machine, StateBase } from "./types";
  * error. These two helpers close that gap, each from one side:
  *
  * - `assertCoverage` — the default: one line in a test, clear failure message.
- * - `createStrictState` — opt-in compile-time enforcement, at the cost of a
+ * - `defineStrictSteps` — opt-in compile-time enforcement, at the cost of a
  *   two-step call and a more cryptic type error.
  */
 
@@ -46,7 +46,7 @@ export function assertCoverage<
   const L extends readonly A["type"][],
 >(machine: Machine<S, A, D>, allActionTypes: L & CompleteList<A, L>): void {
   const handled = new Set<string>();
-  for (const handlers of Object.values<object>(machine.definition.states)) {
+  for (const handlers of Object.values<object>(machine.definition.steps)) {
     for (const actionType of Object.keys(handlers)) {
       handled.add(actionType);
     }
@@ -64,9 +64,9 @@ export function assertCoverage<
 }
 
 /** The union of action types handled by at least one state of `Def`. */
-type HandledActionTypes<Def extends { states: Record<string, unknown> }> = {
-  [K in keyof Def["states"]]: keyof Def["states"][K];
-}[keyof Def["states"]];
+type HandledActionTypes<Def extends { steps: Record<string, unknown> }> = {
+  [K in keyof Def["steps"]]: keyof Def["steps"][K];
+}[keyof Def["steps"]];
 
 /**
  * Compile-time coverage check for a definition: if some member of the action
@@ -75,29 +75,29 @@ type HandledActionTypes<Def extends { states: Record<string, unknown> }> = {
  */
 type FullyHandled<
   A extends ActionBase,
-  Def extends { states: Record<string, unknown> },
+  Def extends { steps: Record<string, unknown> },
 > = [A["type"]] extends [HandledActionTypes<Def>]
   ? unknown
   : ["unhandled action types:", Exclude<A["type"], HandledActionTypes<Def>>];
 
 /**
- * The strict, opt-in variant of `createState`: identical at runtime, but the
+ * The strict, opt-in variant of `defineSteps`: identical at runtime, but the
  * definition only compiles if every action type is handled by at least one
  * state.
  *
- * The call is two-step — `createStrictState<State, Action, Deps>()({ ... })` —
+ * The call is two-step — `defineStrictSteps<State, Action, Deps>()({ ... })` —
  * because the type parameters must be pinned explicitly while the definition
  * literal is inferred (TypeScript has no partial type-argument inference).
- * Prefer `createState` plus an `assertCoverage` test unless you want the
+ * Prefer `defineSteps` plus an `assertCoverage` test unless you want the
  * build itself to fail on an unhandled action.
  */
-export function createStrictState<
+export function defineStrictSteps<
   S extends StateBase,
   A extends ActionBase,
   D = void,
 >() {
   // Returns the pinned `Definition<S, A, D>`, not the inferred `Def`: the
-  // literal type mentions only the states it happens to name, and returning
+  // literal type mentions only the steps it happens to name, and returning
   // it would make downstream `defineMachine` inference collapse `S` to
   // `initial`'s member instead of the full union.
   return <Def extends Definition<S, A, D>>(

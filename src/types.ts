@@ -5,7 +5,7 @@
  * - `State`, discriminated on `step`, where each state owns only its fields
  * - `Action`, discriminated on `type`
  *
- * `Definition.states` must name every step; each state lists the subset
+ * `Definition.steps` must name every step; each state lists the subset
  * of actions it allows, and each handler slot is narrowed to its exact
  * (step, action type) pair. Handler slots are declared as function
  * properties — never method shorthand — so `strictFunctionTypes` checks their
@@ -90,11 +90,11 @@ export type Effect<
   K extends S["step"],
 > = (state: StateOf<S, K>, deps: D, signal: AbortSignal) => Promise<A>;
 
-/** The declarative machine graph. Author it with `createState`. */
+/** The declarative machine graph. Author it with `defineSteps`. */
 export type Definition<S extends StateBase, A extends ActionBase, D = void> = {
   initial: S;
   /** Every step must be present, even if it allows no actions (`{}`). */
-  states: { [K in S["step"]]: HandlerMap<S, A, K> };
+  steps: { [K in S["step"]]: HandlerMap<S, A, K> };
   /** Optional entry effects, keyed by the steps that have one. */
   effects?: { [K in S["step"]]?: Effect<S, A, D, K> };
   /**

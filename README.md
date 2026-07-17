@@ -2,7 +2,7 @@
 
 A tiny library for describing what your app is allowed to do next.
 
-You describe your feature as a set of **states** (the situations it can be in), the **actions** allowed in each state (the things that can happen there), and what each action leads to. mini-step then answers three questions for you, at any moment:
+You describe your feature as a set of **steps** (the situations it can be in), the **actions** allowed at each step (the things that can happen there), and what each action leads to. mini-step then answers three questions for you, at any moment:
 
 - What situation are we in right now?
 - What is the user allowed to do right now?
@@ -23,7 +23,7 @@ Think of your feature as rooms connected by doors.
                 └─────────────┘                └─────────┘
 ```
 
-You are always in exactly **one room** (a state). Each room has a fixed set of **doors** (actions). Walking through a door takes you to the next room. A door that isn't in your current room simply can't be used — if the code tries anyway, nothing happens, and in development you get a console warning telling you so.
+You are always in exactly **one room** (a step). Each room has a fixed set of **doors** (actions). Walking through a door takes you to the next room. A door that isn't in your current room simply can't be used — if the code tries anyway, nothing happens, and in development you get a console warning telling you so.
 
 Some doors also have a **lock** (a guard): the door exists, but it only opens when a condition about the current room is true — "you can only go to payment if the cart has something in it."
 
@@ -53,27 +53,27 @@ Works with TypeScript 5+ in `strict` mode. React (version 18 or newer) is only n
 A light switch — two rooms, one door each:
 
 ```ts
-import { createState, defineMachine } from "mini-step";
+import { defineSteps, defineMachine } from "mini-step";
 
-type State = { step: "off" } | { step: "on"; since: number };
+type State = { step: "off" } | { step: "on"; turnedOnAt: number };
 type Action = { type: "powerOn"; at: number } | { type: "powerOff" };
 
-const definition = createState<State, Action>({
+const definition = defineSteps<State, Action>({
   initial: { step: "off" },
-  states: {
-    off: { powerOn: (_state, action) => ({ step: "on", since: action.at }) },
+  steps: {
+    off: { powerOn: (_state, action) => ({ step: "on", turnedOnAt: action.at }) },
     on: { powerOff: () => ({ step: "off" }) },
   },
 });
 
 const machine = defineMachine(definition);
 
-machine.advance({ step: "off" }, { type: "powerOn", at: 1 }); // → { step: "on", since: 1 }
+machine.advance({ step: "off" }, { type: "powerOn", at: 1 }); // → { step: "on", turnedOnAt: 1 }
 machine.allowed({ step: "off" });                             // → ["powerOn"]
 machine.can({ step: "off" }, "powerOff");                     // → false
 ```
 
-Reading it out loud: "Start switched off. In the `off` state, the only thing that can happen is `powerOn`, which moves us to `on` and remembers when. In the `on` state, the only thing that can happen is `powerOff`."
+Reading it out loud: "Start switched off. At the `off` step, the only thing that can happen is `powerOn`, which moves us to `on` and remembers when. at the `on` step, the only thing that can happen is `powerOff`."
 
 - `advance(state, action)` — "this happened; what's the new situation?"
 - `allowed(state)` — "what's possible right now?" (drives menus and button visibility)
@@ -81,12 +81,12 @@ Reading it out loud: "Start switched off. In the `off` state, the only thing tha
 
 ## Examples
 
-### 1. Sharing behavior between similar states
+### 1. Sharing behavior between similar steps
 
-A writing app where you can draft a **new** document or revise an **existing** one. The two situations are different (revising knows which document it came from), but almost every editing action works the same in both. You write those shared actions once, as a plain object, and spread it into both states:
+A writing app where you can draft a **new** document or revise an **existing** one. The two situations are different (revising knows which document it came from), but almost every editing action works the same in both. You write those shared actions once, as a plain object, and spread it into both steps:
 
 ```ts
-import { createState, defineMachine } from "mini-step";
+import { defineSteps, defineMachine } from "mini-step";
 import type { ActionOf, StateOf } from "mini-step";
 
 type FlowState =
@@ -102,11 +102,11 @@ type FlowAction =
   | { type: "setTags"; tags: string[] }
   | { type: "saveSuccess"; docId: string };
 
-// "Editable" means: either of the two editing states.
+// "Editable" means: either of the two editing steps.
 type Editable = StateOf<FlowState, "drafting" | "revising">;
 type Act<T extends FlowAction["type"]> = ActionOf<FlowAction, T>;
 
-// Actions that work identically in both editing states — written once.
+// Actions that work identically at both editing steps — written once.
 const editDoc = {
   setTitle: (state: Editable, action: Act<"setTitle">): FlowState => ({
     ...state,
@@ -128,9 +128,9 @@ const exits = {
 };
 
 const flow = defineMachine(
-  createState<FlowState, FlowAction>({
+  defineSteps<FlowState, FlowAction>({
     initial: { step: "home" },
-    states: {
+    steps: {
       home: {
         startDraft: (): FlowState => ({
           step: "drafting", view: "outline", title: "", tags: [],
@@ -144,14 +144,14 @@ const flow = defineMachine(
 );
 ```
 
-The compiler keeps this honest: `editDoc` reads editing-only facts (like `title`), so trying to spread it into `home` — a state with no title — is a compile error, not a runtime surprise.
+The compiler keeps this honest: `editDoc` reads editing-only facts (like `title`), so trying to spread it into `home` — a step with no title — is a compile error, not a runtime surprise.
 
 ### 2. Locks on doors: guards
 
-Sometimes an action should exist in a state but only be available under a condition. Wrap the action with `guarded(condition, whatHappens)`:
+Sometimes an action should exist at a step but only be available under a condition. Wrap the action with `guarded(condition, whatHappens)`:
 
 ```ts
-import { createState, defineMachine, guarded } from "mini-step";
+import { defineSteps, defineMachine, guarded } from "mini-step";
 
 type CartState =
   | { step: "editing"; items: string[] }
@@ -162,9 +162,9 @@ type CartAction =
   | { type: "checkout" };
 
 const cart = defineMachine(
-  createState<CartState, CartAction>({
+  defineSteps<CartState, CartAction>({
     initial: { step: "editing", items: [] },
-    states: {
+    steps: {
       editing: {
         addItem: (state, action) => ({
           ...state,
@@ -199,10 +199,10 @@ The condition only looks at the current state, and it should be a quick, side-ef
 
 ### 3. Waiting for slow things: effects
 
-Talking to a server takes time. In mini-step, every wait is its own state, and the state declares what work starts when you enter it. When the work finishes, it reports back as an ordinary action. Publishing a file:
+Talking to a server takes time. In mini-step, every wait is its own step, and the step declares what work starts when you enter it. When the work finishes, it reports back as an ordinary action. Publishing a file:
 
 ```ts
-import { createState, defineMachine } from "mini-step";
+import { defineSteps, defineMachine } from "mini-step";
 
 type PublishState =
   | { step: "idle" }
@@ -224,9 +224,9 @@ type PublishDeps = {
   upload: (size: number, signal: AbortSignal) => Promise<{ url: string }>;
 };
 
-const publish = createState<PublishState, PublishAction, PublishDeps>({
+const publish = defineSteps<PublishState, PublishAction, PublishDeps>({
   initial: { step: "idle" },
-  states: {
+  steps: {
     idle: {
       begin: (_state, action) => ({ step: "checkingQuota", size: action.size }),
     },
@@ -267,7 +267,7 @@ const publishMachine = defineMachine(publish);
 
 Notice what this buys you: the spinner is not a boolean you manage — it's just "are we in `checkingQuota` or `uploading`?". Cancelling is an ordinary door back to `idle`, and a slow server reply that arrives *after* you cancelled is thrown away automatically — it can't sneak in and change anything.
 
-One rule to remember: an effect that fails should catch its own error and return a failure **action** (like `uploadFailed` above). That way the table of states stays the only place that decides where the machine can go.
+One rule to remember: an effect that fails should catch its own error and return a failure **action** (like `uploadFailed` above). That way the table of steps stays the only place that decides where the machine can go.
 
 ### 4. Using it in React
 
@@ -293,11 +293,11 @@ function PublishButton({ deps }: { deps: PublishDeps }) {
 }
 ```
 
-The hook keeps the current state, runs each state's effect when you arrive (and cancels it if you leave early), and gives you `send`, `allowed`, and `can`. If your machine takes no outside dependencies, call it as `useMachine(machine)`.
+The hook keeps the current state, runs each step's effect when you arrive (and cancels it if you leave early), and gives you `send`, `allowed`, and `can`. If your machine takes no outside dependencies, call it as `useMachine(machine)`.
 
 ### 5. Error messages people can read (and translate)
 
-Keep human-readable text **out** of your states. Store a short code instead, and turn it into words at render time — that's where your translation function lives:
+Keep human-readable text **out** of your state. Store a short code instead, and turn it into words at render time — that's where your translation function lives:
 
 ```ts
 type PublishState =
@@ -325,13 +325,13 @@ mini-step has no schema library of its own and adds no dependency — it accepts
 
 ```ts
 import { z } from "zod";
-import { createState, defineMachine } from "mini-step";
+import { defineSteps, defineMachine } from "mini-step";
 
 // Describe the shapes once, with zod. The TypeScript types are derived from
 // the schemas, so the checking and the types can never disagree.
 const StateSchema = z.discriminatedUnion("step", [
   z.object({ step: z.literal("off") }),
-  z.object({ step: z.literal("on"), since: z.number() }),
+  z.object({ step: z.literal("on"), turnedOnAt: z.number() }),
 ]);
 type SwitchState = z.infer<typeof StateSchema>;
 
@@ -342,10 +342,10 @@ const ActionSchema = z.discriminatedUnion("type", [
 type SwitchAction = z.infer<typeof ActionSchema>;
 
 const machine = defineMachine(
-  createState<SwitchState, SwitchAction>({
+  defineSteps<SwitchState, SwitchAction>({
     initial: { step: "off" },
-    states: {
-      off: { powerOn: (_state, action) => ({ step: "on", since: action.at }) },
+    steps: {
+      off: { powerOn: (_state, action) => ({ step: "on", turnedOnAt: action.at }) },
       on: { powerOff: () => ({ step: "off" }) },
     },
     schema: { state: StateSchema, action: ActionSchema },
@@ -368,7 +368,7 @@ Bad data never throws — you get back either `{ value }` (checked and typed) or
 
 ### 7. Making sure nothing was forgotten
 
-Every state must be present in the definition — TypeScript enforces that. But forgetting to handle one *action* anywhere is only a warning at runtime. One line in a test closes the gap:
+Every step must be present in the definition — TypeScript enforces that. But forgetting to handle one *action* anywhere is only a warning at runtime. One line in a test closes the gap:
 
 ```ts
 import { assertCoverage } from "mini-step";
@@ -380,7 +380,7 @@ test("every action is handled somewhere", () => {
 });
 ```
 
-It fails with the names of any actions no state handles — and the list you pass is itself checked at compile time, so it can't silently go stale. If you'd rather the *build* fail than a test, `createStrictState<State, Action>()({...})` refuses to compile while any action is unhandled.
+It fails with the names of any actions no state handles — and the list you pass is itself checked at compile time, so it can't silently go stale. If you'd rather the *build* fail than a test, `defineStrictSteps<State, Action>()({...})` refuses to compile while any action is unhandled.
 
 ## Good to know
 
@@ -396,13 +396,13 @@ If a value can be calculated from data you already have ("is the cart total abov
 
 | Export | What it does |
 | --- | --- |
-| `createState<State, Action, Deps>(definition)` | Author a machine definition. Pins the types so every handler is checked precisely. |
+| `defineSteps<State, Action, Deps>(definition)` | Author a machine definition. Pins the types so every handler is checked precisely. |
 | `defineMachine(definition)` | Turn a definition into a runnable machine: `{ initial, advance, allowed, can, definition }`. |
 | `guarded(condition, handler)` | Put a lock on one action: the handler runs only while the condition holds. |
 | `useMachine(machine, deps?)` — from `mini-step/react` | Run a machine in a component: `{ state, send, allowed, can }`. |
 | `machine.decodeState(value)` / `machine.decodeAction(value)` | Check outside data against the definition's schemas; get a typed value or a list of problems. |
 | `assertCoverage(machine, allActionTypes)` | Test helper: fails if any action is handled nowhere. |
-| `createStrictState<State, Action, Deps>()(definition)` | Like `createState`, but unhandled actions fail the build. |
+| `defineStrictSteps<State, Action, Deps>()(definition)` | Like `defineSteps`, but unhandled actions fail the build. |
 | `StateOf<S, K>` / `ActionOf<A, T>` | Pick one state / action out of the union, for typing shared groups. |
 | `Definition` / `Machine` / `HandlerMap` / `Slot` / `Guarded` / `Effect` / `StandardSchemaV1` | The underlying types. |
 

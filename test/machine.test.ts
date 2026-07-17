@@ -23,13 +23,13 @@ describe("advance", () => {
     expect(next).toEqual({ step: "drafting", view: "outline", title: "", tags: [] });
   });
 
-  it("runs a shared-group handler in both overlapping states", () => {
+  it("runs a shared-group handler in both overlapping steps", () => {
     const action = { type: "setTitle", title: "Renamed" } as const;
     expect(flowMachine.advance(drafting, action)).toEqual({ ...drafting, title: "Renamed" });
     expect(flowMachine.advance(revising, action)).toEqual({ ...revising, title: "Renamed" });
   });
 
-  it("exits both overlapping states through the shared exits group", () => {
+  it("exits both overlapping steps through the shared exits group", () => {
     const fromDrafting = flowMachine.advance(drafting, { type: "saveSuccess", docId: "doc-9" });
     const fromRevising = flowMachine.advance(revising, { type: "saveSuccess", docId: "doc-9" });
     const expected: FlowState = { step: "detail", docId: "doc-9", previous: "home" };
@@ -84,7 +84,7 @@ describe("guards", () => {
     vi.restoreAllMocks();
   });
 
-  it("runs the handler while the guard passes, in both overlapping states", () => {
+  it("runs the handler while the guard passes, in both overlapping steps", () => {
     const action = { type: "showPreview" } as const;
     expect(flowMachine.advance(drafting, action)).toEqual({ ...drafting, view: "preview" });
     expect(flowMachine.advance(revising, action)).toEqual({ ...revising, view: "preview" });
@@ -153,7 +153,7 @@ describe("machine shape", () => {
   it("exposes the initial state and the original definition", () => {
     expect(flowMachine.initial).toEqual({ step: "home" });
     expect(flowMachine.definition.initial).toBe(flowMachine.initial);
-    expect(Object.keys(flowMachine.definition.states).sort()).toEqual([
+    expect(Object.keys(flowMachine.definition.steps).sort()).toEqual([
       "detail",
       "drafting",
       "home",
