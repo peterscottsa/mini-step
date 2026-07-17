@@ -1,6 +1,6 @@
 // Core entry — framework-agnostic, zero dependencies.
-// Coverage helpers land in step 5.
 
+export { assertCoverage, createStrictState } from "./coverage";
 export { createState, defineMachine } from "./machine";
 export type {
   StateBase,
