@@ -1,6 +1,6 @@
 {
   "name": "mini-step",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Tiny declarative state machines over discriminated unions — per-state typed data, shared transition groups, async as states + effects. Zero dependencies.",
   "keywords": [
     "state-machine",
