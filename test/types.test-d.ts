@@ -65,6 +65,28 @@ test("a guarded slot cannot drop into a state outside its union either", () => {
   };
 });
 
+test("guarded slots infer their parameters when written inline", () => {
+  const _def: Definition<FlowState, FlowAction> = {
+    initial: { kind: "home" },
+    states: {
+      home: {},
+      list: {},
+      detail: {},
+      drafting: {
+        setTags: guarded(
+          (state) => state.tags.length < 5,
+          (state, action) => {
+            expectTypeOf(state).toEqualTypeOf<StateOf<FlowState, "drafting">>();
+            expectTypeOf(action).toEqualTypeOf<Act<"setTags">>();
+            return { ...state, tags: action.tags };
+          },
+        ),
+      },
+      revising: {},
+    },
+  };
+});
+
 test("guarded slots type-check inline with annotated parameters", () => {
   const _def: Definition<FlowState, FlowAction> = {
     initial: { kind: "home" },

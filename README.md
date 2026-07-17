@@ -151,20 +151,42 @@ The compiler keeps this honest: `editDoc` reads editing-only facts (like `title`
 Sometimes an action should exist in a state but only be available under a condition. Wrap the action with `guarded(condition, whatHappens)`:
 
 ```ts
-import { guarded } from "minism";
+import { createState, defineMachine, guarded } from "minism";
 
-states: {
-  editing: {
-    addItem: (state, action) => ({ ...state, items: [...state.items, action.item] }),
+type CartState =
+  | { kind: "editing"; items: string[] }
+  | { kind: "payment"; items: string[] };
 
-    // The checkout door exists, but it's locked while the cart is empty.
-    checkout: guarded(
-      (state) => state.items.length > 0,
-      (state) => ({ kind: "payment", items: state.items }),
-    ),
-  },
-  // ...
-}
+type CartAction =
+  | { type: "addItem"; item: string }
+  | { type: "checkout" };
+
+const cart = defineMachine(
+  createState<CartState, CartAction>({
+    initial: { kind: "editing", items: [] },
+    states: {
+      editing: {
+        addItem: (state, action) => ({
+          ...state,
+          items: [...state.items, action.item],
+        }),
+
+        // The checkout door exists, but it's locked while the cart is empty.
+        checkout: guarded(
+          (state) => state.items.length > 0,
+          (state) => ({ kind: "payment", items: state.items }),
+        ),
+      },
+      payment: {},
+    },
+  }),
+);
+
+cart.can(cart.initial, "checkout"); // → false — locked, the cart is empty
+cart.allowed(cart.initial);         // → ["addItem"]
+
+const oneItem = cart.advance(cart.initial, { type: "addItem", item: "book" });
+cart.can(oneItem, "checkout");      // → true — the lock is open
 ```
 
 The lock is checked everywhere automatically:
@@ -180,6 +202,8 @@ The condition only looks at the current state, and it should be a quick, side-ef
 Talking to a server takes time. In minism, every wait is its own state, and the state declares what work starts when you enter it. When the work finishes, it reports back as an ordinary action. Publishing a file:
 
 ```ts
+import { createState, defineMachine } from "minism";
+
 type PublishState =
   | { kind: "idle" }
   | { kind: "checkingQuota"; size: number }
@@ -237,6 +261,8 @@ const publish = createState<PublishState, PublishAction, PublishDeps>({
     },
   },
 });
+
+const publishMachine = defineMachine(publish);
 ```
 
 Notice what this buys you: the spinner is not a boolean you manage — it's just "are we in `checkingQuota` or `uploading`?". Cancelling is an ordinary door back to `idle`, and a slow server reply that arrives *after* you cancelled is thrown away automatically — it can't sneak in and change anything.
@@ -274,14 +300,19 @@ The hook keeps the current state, runs each state's effect when you arrive (and 
 Keep human-readable text **out** of your states. Store a short code instead, and turn it into words at render time — that's where your translation function lives:
 
 ```ts
-// In the machine: a code, not a sentence.
-| { kind: "failed"; reason: "quotaExceeded" | "network"; retryable: boolean }
+type PublishState =
+  | { kind: "uploading"; size: number }
+  // In the machine: a code, not a sentence.
+  | { kind: "failed"; reason: "quotaExceeded" | "network"; retryable: boolean };
 ```
 
 ```tsx
 // In the component: words, translated at the moment of display.
-const t = useT();
-{state.kind === "failed" && <ErrorBanner>{t(`publish.error.${state.reason}`)}</ErrorBanner>}
+function PublishError({ state }: { state: PublishState }) {
+  const t = useT(); // your app's translation hook
+  if (state.kind !== "failed") return null;
+  return <ErrorBanner>{t(`publish.error.${state.reason}`)}</ErrorBanner>;
+}
 ```
 
 Two practical reasons: if the user switches language while an error is on screen, the message follows along on the next render; and if you ever save state and restore it later, codes stay valid while baked-in sentences go stale.
