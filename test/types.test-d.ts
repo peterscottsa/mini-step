@@ -1,4 +1,5 @@
 import { expectTypeOf, test } from "vitest";
+import { guarded } from "../src/index";
 import type { Definition, HandlerMap, StateOf } from "../src/index";
 import { editDoc, exits } from "./fixtures/flow";
 import type { Act, Editable, FlowAction, FlowState, Previous } from "./fixtures/flow";
@@ -54,6 +55,34 @@ test("a state-reading handler cannot drop into a state outside its union", () =>
   const _map: HandlerMap<FlowState, FlowAction, "home"> = {
     // @ts-expect-error showOutline reads Editable; home is not an Editable
     showOutline: editDoc.showOutline,
+  };
+});
+
+test("a guarded slot cannot drop into a state outside its union either", () => {
+  const _map: HandlerMap<FlowState, FlowAction, "home"> = {
+    // @ts-expect-error showPreview's guard reads Editable; home is not an Editable
+    showPreview: editDoc.showPreview,
+  };
+});
+
+test("guarded slots type-check inline with annotated parameters", () => {
+  const _def: Definition<FlowState, FlowAction> = {
+    initial: { kind: "home" },
+    states: {
+      home: {},
+      list: {},
+      detail: {},
+      drafting: {
+        setTags: guarded(
+          (state: Editable) => state.tags.length < 5,
+          (state: Editable, action: Act<"setTags">): FlowState => ({
+            ...state,
+            tags: action.tags,
+          }),
+        ),
+      },
+      revising: {},
+    },
   };
 });
 

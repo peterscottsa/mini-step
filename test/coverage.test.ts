@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertCoverage, createStrictState, defineMachine } from "../src/index";
+import { assertCoverage, createStrictState, defineMachine, guarded } from "../src/index";
 import { flowMachine } from "./fixtures/flow";
 import { publishMachine } from "./fixtures/publish";
 
@@ -32,6 +32,24 @@ describe("assertCoverage", () => {
       "retry",
       "cancel",
     ]);
+  });
+
+  it("counts guarded slots as handled", () => {
+    const machine = defineMachine<ToggleState, ToggleAction>({
+      initial: { kind: "off" },
+      states: {
+        on: {
+          toggle: () => ({ kind: "off" }),
+          disable: guarded(
+            (state: ToggleState): boolean => state.kind === "on",
+            (): ToggleState => ({ kind: "off" }),
+          ),
+        },
+        off: { toggle: () => ({ kind: "on" }), reset: () => ({ kind: "off" }) },
+      },
+    });
+
+    assertCoverage(machine, ["toggle", "reset", "disable"]);
   });
 
   it("throws, naming every action type no state handles", () => {

@@ -2,7 +2,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createState, defineMachine } from "../src/index";
+import { createState, defineMachine, guarded } from "../src/index";
 import { useMachine } from "../src/react";
 import { publishMachine } from "./fixtures/publish";
 import type { PublishDeps } from "./fixtures/publish";
@@ -139,6 +139,38 @@ describe("useMachine", () => {
     expect(result.current.can("cancel")).toBe(true);
   });
 
+  it("reflects guards through allowed/can and no-ops a declined send", () => {
+    type CountState = { kind: "counting"; n: number };
+    type CountAction = { type: "increment" };
+    const capped = defineMachine(
+      createState<CountState, CountAction>({
+        initial: { kind: "counting", n: 0 },
+        states: {
+          counting: {
+            increment: guarded(
+              (state: CountState) => state.n < 2,
+              (state: CountState): CountState => ({ kind: "counting", n: state.n + 1 }),
+            ),
+          },
+        },
+      }),
+    );
+
+    const { result } = renderHook(() => useMachine(capped));
+    expect(result.current.can("increment")).toBe(true);
+
+    act(() => result.current.send({ type: "increment" }));
+    act(() => result.current.send({ type: "increment" }));
+    expect(result.current.state).toEqual({ kind: "counting", n: 2 });
+    expect(result.current.can("increment")).toBe(false);
+    expect(result.current.allowed()).toEqual([]);
+
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    act(() => result.current.send({ type: "increment" }));
+    expect(result.current.state).toEqual({ kind: "counting", n: 2 });
+    expect(warn).toHaveBeenCalledOnce();
+  });
+
   it("dev-warns and stays put when an effect rejects instead of mapping its error", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     type S = { kind: "loading" } | { kind: "loaded" };
@@ -168,7 +200,12 @@ describe("useMachine", () => {
     const strict = defineMachine(
       createState<S, A>({
         initial: { kind: "loading" },
-        states: { loading: { finish: (_s, a) => ({ kind: "loaded", value: a.value }) }, loaded: {} },
+        states: {
+          loading: {
+            finish: (_state, action) => ({ kind: "loaded", value: action.value }),
+          },
+          loaded: {},
+        },
         effects: {
           loading: async (_state, _deps, signal) => {
             runs.push(signal);

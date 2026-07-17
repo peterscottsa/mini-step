@@ -72,6 +72,55 @@ describe("illegal actions", () => {
   });
 });
 
+describe("guards", () => {
+  const untitled: FlowState = {
+    kind: "drafting",
+    view: "outline",
+    title: "",
+    tags: [],
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("runs the handler while the guard passes, in both overlapping states", () => {
+    const action = { type: "showPreview" } as const;
+    expect(flowMachine.advance(drafting, action)).toEqual({ ...drafting, view: "preview" });
+    expect(flowMachine.advance(revising, action)).toEqual({ ...revising, view: "preview" });
+  });
+
+  it("declines with a same-reference no-op and a dev warning when the guard fails", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const next = flowMachine.advance(untitled, { type: "showPreview" });
+    expect(next).toBe(untitled);
+    expect(warn).toHaveBeenCalledExactlyOnceWith(
+      '[minism] Action "showPreview" declined by guard in state "drafting" — ignored.',
+    );
+  });
+
+  it("does not warn about declined guards in production", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      const next = flowMachine.advance(untitled, { type: "showPreview" });
+      expect(next).toBe(untitled);
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("keeps allowed() and can() truthful as the guard opens and closes", () => {
+    expect(flowMachine.can(untitled, "showPreview")).toBe(false);
+    expect(flowMachine.allowed(untitled)).not.toContain("showPreview");
+
+    const titled = flowMachine.advance(untitled, { type: "setTitle", title: "T" });
+    expect(flowMachine.can(titled, "showPreview")).toBe(true);
+    expect(flowMachine.allowed(titled)).toContain("showPreview");
+  });
+});
+
 describe("allowed / can", () => {
   it("reports a state's legal actions as its declared keys", () => {
     expect(flowMachine.allowed(flowMachine.initial).sort()).toEqual([

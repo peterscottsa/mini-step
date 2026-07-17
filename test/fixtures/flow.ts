@@ -3,7 +3,7 @@
  * `drafting` (a new document) and `revising` (an existing one) share almost
  * every transition.
  */
-import { createState, defineMachine } from "../../src/index";
+import { createState, defineMachine, guarded } from "../../src/index";
 import type { ActionOf, StateOf } from "../../src/index";
 
 export type View = "outline" | "preview";
@@ -66,7 +66,12 @@ export const exits = {
 
 export const editDoc = {
   showOutline: (state: Editable): FlowState => ({ ...state, view: "outline" }),
-  showPreview: (state: Editable): FlowState => ({ ...state, view: "preview" }),
+  // Guarded slot inside a shared group: previewing needs a title. Travels
+  // into both `drafting` and `revising` like any other group member.
+  showPreview: guarded(
+    (state: Editable) => state.title !== "",
+    (state: Editable): FlowState => ({ ...state, view: "preview" }),
+  ),
   setTitle: (state: Editable, action: Act<"setTitle">): FlowState => ({
     ...state,
     title: action.title,
