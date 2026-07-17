@@ -2,12 +2,12 @@
  * Type-level core.
  *
  * A machine is declared over two discriminated unions:
- * - `State`, discriminated on `kind`, where each state owns only its fields
+ * - `State`, discriminated on `step`, where each state owns only its fields
  * - `Action`, discriminated on `type`
  *
- * `Definition.states` must name every state kind; each state lists the subset
+ * `Definition.states` must name every step; each state lists the subset
  * of actions it allows, and each handler slot is narrowed to its exact
- * (state kind, action type) pair. Handler slots are declared as function
+ * (step, action type) pair. Handler slots are declared as function
  * properties — never method shorthand — so `strictFunctionTypes` checks their
  * parameters contravariantly. That contravariance is what makes shared
  * transition groups sound: a handler written over a wider state union (or one
@@ -17,13 +17,13 @@
 
 import type { StandardSchemaV1 } from "./standard-schema";
 
-export type StateBase = { kind: string };
+export type StateBase = { step: string };
 export type ActionBase = { type: string };
 
-/** The member of the state union `S` whose `kind` is `K`. */
-export type StateOf<S extends StateBase, K extends S["kind"]> = Extract<
+/** The member of the state union `S` whose `step` is `K`. */
+export type StateOf<S extends StateBase, K extends S["step"]> = Extract<
   S,
-  { kind: K }
+  { step: K }
 >;
 
 /**
@@ -47,7 +47,7 @@ export type ActionOf<A extends ActionBase, T extends A["type"]> = Extract<
 export type Guarded<
   S extends StateBase,
   A extends ActionBase,
-  K extends S["kind"],
+  K extends S["step"],
   T extends A["type"],
 > = {
   guard: (state: StateOf<S, K>) => boolean;
@@ -58,7 +58,7 @@ export type Guarded<
 export type Slot<
   S extends StateBase,
   A extends ActionBase,
-  K extends S["kind"],
+  K extends S["step"],
   T extends A["type"],
 > = ((state: StateOf<S, K>, action: ActionOf<A, T>) => S) | Guarded<S, A, K, T>;
 
@@ -71,13 +71,13 @@ export type Slot<
 export type HandlerMap<
   S extends StateBase,
   A extends ActionBase,
-  K extends S["kind"],
+  K extends S["step"],
 > = {
   [T in A["type"]]?: Slot<S, A, K, T>;
 };
 
 /**
- * An entry effect for state kind `K`: runs when the machine enters the state,
+ * An entry effect for the state whose step is `K`: runs when the machine enters the state,
  * resolves to the next action to send. Effects map their own errors to a
  * failure action — they never throw past the hook. `signal` aborts when the
  * machine leaves the state (or the host unmounts); a resolved action from an
@@ -87,16 +87,16 @@ export type Effect<
   S extends StateBase,
   A extends ActionBase,
   D,
-  K extends S["kind"],
+  K extends S["step"],
 > = (state: StateOf<S, K>, deps: D, signal: AbortSignal) => Promise<A>;
 
 /** The declarative machine graph. Author it with `createState`. */
 export type Definition<S extends StateBase, A extends ActionBase, D = void> = {
   initial: S;
-  /** Every state kind must be present, even if it allows no actions (`{}`). */
-  states: { [K in S["kind"]]: HandlerMap<S, A, K> };
-  /** Optional entry effects, keyed by the state kinds that have one. */
-  effects?: { [K in S["kind"]]?: Effect<S, A, D, K> };
+  /** Every step must be present, even if it allows no actions (`{}`). */
+  states: { [K in S["step"]]: HandlerMap<S, A, K> };
+  /** Optional entry effects, keyed by the steps that have one. */
+  effects?: { [K in S["step"]]?: Effect<S, A, D, K> };
   /**
    * Optional boundary schemas for `decodeState`/`decodeAction` — validating
    * data that arrives from outside the type system (saved state being

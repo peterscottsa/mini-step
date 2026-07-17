@@ -10,12 +10,12 @@ export type View = "outline" | "preview";
 export type Previous = "home" | "list";
 
 export type FlowState =
-  | { kind: "home" }
-  | { kind: "list" }
-  | { kind: "detail"; docId: string; previous: Previous }
-  | { kind: "drafting"; view: View; title: string; tags: string[] }
+  | { step: "home" }
+  | { step: "list" }
+  | { step: "detail"; docId: string; previous: Previous }
+  | { step: "drafting"; view: View; title: string; tags: string[] }
   | {
-      kind: "revising";
+      step: "revising";
       view: View;
       title: string;
       tags: string[];
@@ -50,15 +50,15 @@ export type Act<T extends FlowAction["type"]> = ActionOf<FlowAction, T>;
 // ---------------------------------------------------------------------------
 
 export const exits = {
-  goHome: (): FlowState => ({ kind: "home" }),
-  viewList: (): FlowState => ({ kind: "list" }),
+  goHome: (): FlowState => ({ step: "home" }),
+  viewList: (): FlowState => ({ step: "list" }),
   viewDoc: (_state: FlowState, action: Act<"viewDoc">): FlowState => ({
-    kind: "detail",
+    step: "detail",
     docId: action.docId,
     previous: action.previous,
   }),
   saveSuccess: (_state: FlowState, action: Act<"saveSuccess">): FlowState => ({
-    kind: "detail",
+    step: "detail",
     docId: action.docId,
     previous: "home",
   }),
@@ -84,19 +84,19 @@ export const editDoc = {
 
 const begin = {
   startDraft: (): FlowState => ({
-    kind: "drafting",
+    step: "drafting",
     view: "outline",
     title: "",
     tags: [],
   }),
   resumeDraft: (_state: FlowState, action: Act<"resumeDraft">): FlowState => ({
-    kind: "drafting",
+    step: "drafting",
     view: "outline",
     title: action.title,
     tags: action.tags,
   }),
   enterRevise: (_state: FlowState, action: Act<"enterRevise">): FlowState => ({
-    kind: "revising",
+    step: "revising",
     view: "outline",
     docId: action.docId,
     title: action.title,
@@ -105,7 +105,7 @@ const begin = {
 };
 
 export const flowDefinition = createState<FlowState, FlowAction>({
-  initial: { kind: "home" },
+  initial: { step: "home" },
   states: {
     home: { ...begin, viewList: exits.viewList, viewDoc: exits.viewDoc },
     list: { viewDoc: exits.viewDoc, goHome: exits.goHome },

@@ -3,7 +3,7 @@ import { assertCoverage, createStrictState, defineMachine, guarded } from "../sr
 import { flowMachine } from "./fixtures/flow";
 import { publishMachine } from "./fixtures/publish";
 
-type ToggleState = { kind: "on" } | { kind: "off" };
+type ToggleState = { step: "on" } | { step: "off" };
 type ToggleAction = { type: "toggle" } | { type: "reset" } | { type: "disable" };
 
 describe("assertCoverage", () => {
@@ -36,16 +36,16 @@ describe("assertCoverage", () => {
 
   it("counts guarded slots as handled", () => {
     const machine = defineMachine<ToggleState, ToggleAction>({
-      initial: { kind: "off" },
+      initial: { step: "off" },
       states: {
         on: {
-          toggle: () => ({ kind: "off" }),
+          toggle: () => ({ step: "off" }),
           disable: guarded(
-            (state: ToggleState): boolean => state.kind === "on",
-            (): ToggleState => ({ kind: "off" }),
+            (state: ToggleState): boolean => state.step === "on",
+            (): ToggleState => ({ step: "off" }),
           ),
         },
-        off: { toggle: () => ({ kind: "on" }), reset: () => ({ kind: "off" }) },
+        off: { toggle: () => ({ step: "on" }), reset: () => ({ step: "off" }) },
       },
     });
 
@@ -54,10 +54,10 @@ describe("assertCoverage", () => {
 
   it("throws, naming every action type no state handles", () => {
     const machine = defineMachine<ToggleState, ToggleAction>({
-      initial: { kind: "off" },
+      initial: { step: "off" },
       states: {
-        on: { toggle: () => ({ kind: "off" }) },
-        off: { toggle: () => ({ kind: "on" }) },
+        on: { toggle: () => ({ step: "off" }) },
+        off: { toggle: () => ({ step: "on" }) },
       },
     });
 
@@ -72,17 +72,17 @@ describe("assertCoverage", () => {
 describe("createStrictState", () => {
   it("is identity at runtime and composes with defineMachine", () => {
     const definition = createStrictState<ToggleState, ToggleAction>()({
-      initial: { kind: "off" },
+      initial: { step: "off" },
       states: {
-        on: { toggle: () => ({ kind: "off" }), disable: () => ({ kind: "off" }) },
-        off: { toggle: () => ({ kind: "on" }), reset: () => ({ kind: "off" }) },
+        on: { toggle: () => ({ step: "off" }), disable: () => ({ step: "off" }) },
+        off: { toggle: () => ({ step: "on" }), reset: () => ({ step: "off" }) },
       },
     });
 
     const machine = defineMachine(definition);
     expect(machine.definition).toBe(definition);
-    expect(machine.advance({ kind: "off" }, { type: "toggle" })).toEqual({
-      kind: "on",
+    expect(machine.advance({ step: "off" }, { type: "toggle" })).toEqual({
+      step: "on",
     });
   });
 });

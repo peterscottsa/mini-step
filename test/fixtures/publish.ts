@@ -7,11 +7,11 @@
 import { createState, defineMachine } from "../../src/index";
 
 export type PublishState =
-  | { kind: "idle" }
-  | { kind: "checkingQuota"; size: number }
-  | { kind: "uploading"; size: number }
-  | { kind: "done"; url: string }
-  | { kind: "failed"; reason: string; retryable: boolean };
+  | { step: "idle" }
+  | { step: "checkingQuota"; size: number }
+  | { step: "uploading"; size: number }
+  | { step: "done"; url: string }
+  | { step: "failed"; reason: string; retryable: boolean };
 
 export type PublishAction =
   | { type: "begin"; size: number }
@@ -31,30 +31,30 @@ export const publishDefinition = createState<
   PublishAction,
   PublishDeps
 >({
-  initial: { kind: "idle" },
+  initial: { step: "idle" },
   states: {
     idle: {
-      begin: (_state, action) => ({ kind: "checkingQuota", size: action.size }),
+      begin: (_state, action) => ({ step: "checkingQuota", size: action.size }),
     },
     checkingQuota: {
       quotaResolved: (state, action) =>
         action.sufficient
-          ? { kind: "uploading", size: state.size }
-          : { kind: "failed", reason: "Not enough space", retryable: false },
-      cancel: () => ({ kind: "idle" }),
+          ? { step: "uploading", size: state.size }
+          : { step: "failed", reason: "Not enough space", retryable: false },
+      cancel: () => ({ step: "idle" }),
     },
     uploading: {
-      uploadSucceeded: (_state, action) => ({ kind: "done", url: action.url }),
+      uploadSucceeded: (_state, action) => ({ step: "done", url: action.url }),
       uploadFailed: (_state, action) => ({
-        kind: "failed",
+        step: "failed",
         reason: action.message,
         retryable: true,
       }),
-      cancel: () => ({ kind: "idle" }),
+      cancel: () => ({ step: "idle" }),
     },
     failed: {
-      retry: () => ({ kind: "idle" }),
-      cancel: () => ({ kind: "idle" }),
+      retry: () => ({ step: "idle" }),
+      cancel: () => ({ step: "idle" }),
     },
     done: {},
   },

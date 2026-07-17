@@ -5,7 +5,7 @@ import type { ActionBase, Definition, Machine, StateBase } from "./types";
 /**
  * Author a machine graph. Runtime identity — it exists to pin the three type
  * parameters in one place so every handler slot in the definition literal is
- * narrowed to its exact (state kind, action type) pair.
+ * narrowed to its exact (step, action type) pair.
  */
 export function createState<
   S extends StateBase,
@@ -37,7 +37,7 @@ export function guarded<St, Ac, S extends StateBase>(
 
 /**
  * Internal, deliberately widened view of the states map. TypeScript cannot
- * correlate `state.kind` with the map key it came from (the correlated-union
+ * correlate `state.step` with the map key it came from (the correlated-union
  * limitation), so the engine goes through this cast; the `Definition` type
  * guarantees by construction that every stored slot matches its position.
  * Slot discrimination is `typeof slot === "function"`: `Definition` admits
@@ -90,11 +90,11 @@ export function defineMachine<
   const table = definition.states as Table<S, A>;
 
   const advance = (state: S, action: A): S => {
-    const slot = table[state.kind]?.[action.type];
+    const slot = table[state.step]?.[action.type];
     if (!slot) {
       if (inDev()) {
         console.warn(
-          `[minism] Action "${action.type}" is not allowed in state "${state.kind}" — ignored.`,
+          `[minism] Action "${action.type}" is not allowed in state "${state.step}" — ignored.`,
         );
       }
       return state;
@@ -105,7 +105,7 @@ export function defineMachine<
     if (!slot.guard(state)) {
       if (inDev()) {
         console.warn(
-          `[minism] Action "${action.type}" declined by guard in state "${state.kind}" — ignored.`,
+          `[minism] Action "${action.type}" declined by guard in state "${state.step}" — ignored.`,
         );
       }
       return state;
@@ -114,7 +114,7 @@ export function defineMachine<
   };
 
   const can = (state: S, actionType: A["type"]): boolean => {
-    const slot = table[state.kind]?.[actionType];
+    const slot = table[state.step]?.[actionType];
     if (slot === undefined) return false;
     return typeof slot === "function" || slot.guard(state);
   };
@@ -122,7 +122,7 @@ export function defineMachine<
   // `Object.keys` is typed `string[]`; these keys are `A["type"]` by
   // construction, since `HandlerMap` admits no other property names.
   const allowed = (state: S): A["type"][] =>
-    (Object.keys(table[state.kind] ?? {}) as A["type"][]).filter(
+    (Object.keys(table[state.step] ?? {}) as A["type"][]).filter(
       (actionType) => can(state, actionType),
     );
 

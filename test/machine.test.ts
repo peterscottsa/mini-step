@@ -3,14 +3,14 @@ import { flowMachine } from "./fixtures/flow";
 import type { FlowState } from "./fixtures/flow";
 
 const drafting: FlowState = {
-  kind: "drafting",
+  step: "drafting",
   view: "outline",
   title: "Field notes",
   tags: ["draft"],
 };
 
 const revising: FlowState = {
-  kind: "revising",
+  step: "revising",
   view: "outline",
   title: "Field notes",
   tags: ["draft"],
@@ -20,7 +20,7 @@ const revising: FlowState = {
 describe("advance", () => {
   it("follows a legal transition and carries per-state data", () => {
     const next = flowMachine.advance(flowMachine.initial, { type: "startDraft" });
-    expect(next).toEqual({ kind: "drafting", view: "outline", title: "", tags: [] });
+    expect(next).toEqual({ step: "drafting", view: "outline", title: "", tags: [] });
   });
 
   it("runs a shared-group handler in both overlapping states", () => {
@@ -32,7 +32,7 @@ describe("advance", () => {
   it("exits both overlapping states through the shared exits group", () => {
     const fromDrafting = flowMachine.advance(drafting, { type: "saveSuccess", docId: "doc-9" });
     const fromRevising = flowMachine.advance(revising, { type: "saveSuccess", docId: "doc-9" });
-    const expected: FlowState = { kind: "detail", docId: "doc-9", previous: "home" };
+    const expected: FlowState = { step: "detail", docId: "doc-9", previous: "home" };
     expect(fromDrafting).toEqual(expected);
     expect(fromRevising).toEqual(expected);
   });
@@ -74,7 +74,7 @@ describe("illegal actions", () => {
 
 describe("guards", () => {
   const untitled: FlowState = {
-    kind: "drafting",
+    step: "drafting",
     view: "outline",
     title: "",
     tags: [],
@@ -151,7 +151,7 @@ describe("allowed / can", () => {
 
 describe("machine shape", () => {
   it("exposes the initial state and the original definition", () => {
-    expect(flowMachine.initial).toEqual({ kind: "home" });
+    expect(flowMachine.initial).toEqual({ step: "home" });
     expect(flowMachine.definition.initial).toBe(flowMachine.initial);
     expect(Object.keys(flowMachine.definition.states).sort()).toEqual([
       "detail",

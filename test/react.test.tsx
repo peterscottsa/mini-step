@@ -40,18 +40,18 @@ describe("useMachine", () => {
     const { deps, quota, upload } = makeDeps();
     const { result } = renderHook(() => useMachine(publishMachine, deps));
 
-    expect(result.current.state).toEqual({ kind: "idle" });
+    expect(result.current.state).toEqual({ step: "idle" });
 
     act(() => result.current.send({ type: "begin", size: 512 }));
-    expect(result.current.state).toEqual({ kind: "checkingQuota", size: 512 });
+    expect(result.current.state).toEqual({ step: "checkingQuota", size: 512 });
     expect(deps.hasQuota).toHaveBeenCalledExactlyOnceWith(512);
 
     await act(async () => quota.resolve(true));
-    expect(result.current.state).toEqual({ kind: "uploading", size: 512 });
+    expect(result.current.state).toEqual({ step: "uploading", size: 512 });
 
     await act(async () => upload.resolve({ url: "https://cdn.example/f/512" }));
     expect(result.current.state).toEqual({
-      kind: "done",
+      step: "done",
       url: "https://cdn.example/f/512",
     });
   });
@@ -64,7 +64,7 @@ describe("useMachine", () => {
     await act(async () => quota.resolve(false));
 
     expect(result.current.state).toEqual({
-      kind: "failed",
+      step: "failed",
       reason: "Not enough space",
       retryable: false,
     });
@@ -78,10 +78,10 @@ describe("useMachine", () => {
 
     act(() => result.current.send({ type: "begin", size: 512 }));
     act(() => result.current.send({ type: "cancel" }));
-    expect(result.current.state).toEqual({ kind: "idle" });
+    expect(result.current.state).toEqual({ step: "idle" });
 
     await act(async () => quota.resolve(true));
-    expect(result.current.state).toEqual({ kind: "idle" });
+    expect(result.current.state).toEqual({ step: "idle" });
     expect(warn).not.toHaveBeenCalled();
   });
 
@@ -110,7 +110,7 @@ describe("useMachine", () => {
     rerender({ deps: second.deps });
 
     await act(async () => first.quota.resolve(true));
-    expect(result.current.state).toEqual({ kind: "uploading", size: 512 });
+    expect(result.current.state).toEqual({ step: "uploading", size: 512 });
     expect(first.deps.hasQuota).toHaveBeenCalledOnce();
     expect(second.deps.hasQuota).not.toHaveBeenCalled();
     // The next entry picks up the latest deps.
@@ -140,16 +140,16 @@ describe("useMachine", () => {
   });
 
   it("reflects guards through allowed/can and no-ops a declined send", () => {
-    type CountState = { kind: "counting"; n: number };
+    type CountState = { step: "counting"; n: number };
     type CountAction = { type: "increment" };
     const capped = defineMachine(
       createState<CountState, CountAction>({
-        initial: { kind: "counting", n: 0 },
+        initial: { step: "counting", n: 0 },
         states: {
           counting: {
             increment: guarded(
               (state: CountState) => state.n < 2,
-              (state: CountState): CountState => ({ kind: "counting", n: state.n + 1 }),
+              (state: CountState): CountState => ({ step: "counting", n: state.n + 1 }),
             ),
           },
         },
@@ -161,24 +161,24 @@ describe("useMachine", () => {
 
     act(() => result.current.send({ type: "increment" }));
     act(() => result.current.send({ type: "increment" }));
-    expect(result.current.state).toEqual({ kind: "counting", n: 2 });
+    expect(result.current.state).toEqual({ step: "counting", n: 2 });
     expect(result.current.can("increment")).toBe(false);
     expect(result.current.allowed()).toEqual([]);
 
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     act(() => result.current.send({ type: "increment" }));
-    expect(result.current.state).toEqual({ kind: "counting", n: 2 });
+    expect(result.current.state).toEqual({ step: "counting", n: 2 });
     expect(warn).toHaveBeenCalledOnce();
   });
 
   it("dev-warns and stays put when an effect rejects instead of mapping its error", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    type S = { kind: "loading" } | { kind: "loaded" };
+    type S = { step: "loading" } | { step: "loaded" };
     type A = { type: "finish" };
     const rejecting = defineMachine(
       createState<S, A>({
-        initial: { kind: "loading" },
-        states: { loading: { finish: () => ({ kind: "loaded" }) }, loaded: {} },
+        initial: { step: "loading" },
+        states: { loading: { finish: () => ({ step: "loaded" }) }, loaded: {} },
         effects: {
           loading: () => Promise.reject(new Error("boom")),
         },
@@ -188,21 +188,21 @@ describe("useMachine", () => {
     const { result } = renderHook(() => useMachine(rejecting));
     await act(async () => {});
 
-    expect(result.current.state).toEqual({ kind: "loading" });
+    expect(result.current.state).toEqual({ step: "loading" });
     expect(warn).toHaveBeenCalledOnce();
     expect(String(warn.mock.calls[0]?.[0])).toContain('Effect for state "loading" rejected');
   });
 
   it("survives StrictMode: the doubled mount effect is aborted, one transition lands", async () => {
-    type S = { kind: "loading" } | { kind: "loaded"; value: number };
+    type S = { step: "loading" } | { step: "loaded"; value: number };
     type A = { type: "finish"; value: number };
     const runs: AbortSignal[] = [];
     const strict = defineMachine(
       createState<S, A>({
-        initial: { kind: "loading" },
+        initial: { step: "loading" },
         states: {
           loading: {
-            finish: (_state, action) => ({ kind: "loaded", value: action.value }),
+            finish: (_state, action) => ({ step: "loaded", value: action.value }),
           },
           loaded: {},
         },
@@ -226,7 +226,7 @@ describe("useMachine", () => {
     // aborts that entry's controller, which is the contract.)
     expect(runs).toHaveLength(2);
     expect(runs[0]?.aborted).toBe(true);
-    expect(result.current.state).toEqual({ kind: "loaded", value: 2 });
+    expect(result.current.state).toEqual({ step: "loaded", value: 2 });
     expect(warn).not.toHaveBeenCalled();
   });
 });

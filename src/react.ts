@@ -18,9 +18,9 @@ export type UseMachineResult<S extends StateBase, A extends ActionBase> = {
 /**
  * Internal, deliberately widened view of the effects map — the hook-side
  * counterpart of the engine's `Table`. TypeScript cannot correlate
- * `state.kind` with the slot it indexes (the correlated-union limitation), so
+ * `state.step` with the slot it indexes (the correlated-union limitation), so
  * the hook widens once, here; the `Definition` type guarantees at authoring
- * time that every stored effect matches its state kind. `deps` is widened to
+ * time that every stored effect matches its step. `deps` is widened to
  * `D | undefined` for the same reason: the overload signatures guarantee it
  * is only omitted when `D` is `void`.
  */
@@ -37,7 +37,7 @@ type EffectTable<S extends StateBase, A extends ActionBase, D> =
  *
  * Transitions go through `useReducer(machine.advance)`. Entry effects run per
  * state entry — an entry is a state *object* returned by a transition, so a
- * self-update that returns a new object of the same kind re-enters and
+ * self-update that returns a new object of the same step re-enters and
  * re-runs its effect. Each entry gets its own `AbortController`: leaving the
  * state (or unmounting) aborts it, and an action resolved by an aborted
  * effect is dropped, never dispatched. `machine` is expected to be a
@@ -71,7 +71,7 @@ export function useMachine<S extends StateBase, A extends ActionBase, D>(
   const effects = machine.definition.effects as EffectTable<S, A, D>;
 
   useEffect(() => {
-    const effect = effects?.[state.kind];
+    const effect = effects?.[state.step];
     if (!effect) return;
     const controller = new AbortController();
     const { signal } = controller;
@@ -82,7 +82,7 @@ export function useMachine<S extends StateBase, A extends ActionBase, D>(
       (error: unknown) => {
         if (!signal.aborted && inDev()) {
           console.warn(
-            `[minism] Effect for state "${state.kind}" rejected — effects should map their errors to a failure action.`,
+            `[minism] Effect for state "${state.step}" rejected — effects should map their errors to a failure action.`,
             error,
           );
         }

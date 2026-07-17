@@ -2,9 +2,9 @@ import { test } from "vitest";
 import { z } from "zod";
 import type { Definition } from "../src/index";
 
-const StateSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("off") }),
-  z.object({ kind: z.literal("on"), since: z.number() }),
+const StateSchema = z.discriminatedUnion("step", [
+  z.object({ step: z.literal("off") }),
+  z.object({ step: z.literal("on"), since: z.number() }),
 ]);
 type SwitchState = z.infer<typeof StateSchema>;
 
@@ -15,14 +15,14 @@ const ActionSchema = z.discriminatedUnion("type", [
 type SwitchAction = z.infer<typeof ActionSchema>;
 
 const states: Definition<SwitchState, SwitchAction>["states"] = {
-  off: { powerOn: (_state, action) => ({ kind: "on", since: action.at }) },
-  on: { powerOff: () => ({ kind: "off" }) },
+  off: { powerOn: (_state, action) => ({ step: "on", since: action.at }) },
+  on: { powerOff: () => ({ step: "off" }) },
 };
 
 test("a schema whose output drifts from the union is rejected at the property", () => {
-  const DriftedSchema = z.object({ kind: z.literal("on"), since: z.string() }); // since: string ≠ number
+  const DriftedSchema = z.object({ step: z.literal("on"), since: z.string() }); // since: string ≠ number
   const _def: Definition<SwitchState, SwitchAction> = {
-    initial: { kind: "off" },
+    initial: { step: "off" },
     states,
     schema: {
       // @ts-expect-error the schema's output does not match the state union
@@ -34,7 +34,7 @@ test("a schema whose output drifts from the union is rejected at the property", 
 test("an action schema with a wrong payload type is rejected too", () => {
   const DriftedSchema = z.object({ type: z.literal("powerOn"), at: z.boolean() });
   const _def: Definition<SwitchState, SwitchAction> = {
-    initial: { kind: "off" },
+    initial: { step: "off" },
     states,
     schema: {
       // @ts-expect-error the schema's output does not match the action union
@@ -48,9 +48,9 @@ test("documented caveat: a schema covering only a subset of the union compiles",
   // assignable to the union. The recipe that removes the risk entirely is to
   // derive the union types from the schemas (as this file does), so there is
   // no second declaration to drift.
-  const SubsetSchema = z.object({ kind: z.literal("off") });
+  const SubsetSchema = z.object({ step: z.literal("off") });
   const _def: Definition<SwitchState, SwitchAction> = {
-    initial: { kind: "off" },
+    initial: { step: "off" },
     states,
     schema: { state: SubsetSchema },
   };

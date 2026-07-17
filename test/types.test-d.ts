@@ -7,7 +7,7 @@ import type { Act, Editable, FlowAction, FlowState, Previous } from "./fixtures/
 test("StateOf and ActionOf extract exact union members", () => {
   expectTypeOf<Act<"setTitle">>().toEqualTypeOf<{ type: "setTitle"; title: string }>();
   expectTypeOf<StateOf<FlowState, "detail">>().toEqualTypeOf<{
-    kind: "detail";
+    step: "detail";
     docId: string;
     previous: Previous;
   }>();
@@ -15,13 +15,13 @@ test("StateOf and ActionOf extract exact union members", () => {
 
 test("handler slots narrow state and action to their exact pair", () => {
   const _def: Definition<FlowState, FlowAction> = {
-    initial: { kind: "home" },
+    initial: { step: "home" },
     states: {
       home: {
         startDraft: (state, action) => {
           expectTypeOf(state).toEqualTypeOf<StateOf<FlowState, "home">>();
           expectTypeOf(action).toEqualTypeOf<Act<"startDraft">>();
-          return { kind: "drafting", view: "outline", title: "", tags: [] };
+          return { step: "drafting", view: "outline", title: "", tags: [] };
         },
       },
       list: {},
@@ -40,7 +40,7 @@ test("handler slots narrow state and action to their exact pair", () => {
 
 test("shared groups spread into every state they are valid for", () => {
   const _def: Definition<FlowState, FlowAction> = {
-    initial: { kind: "home" },
+    initial: { step: "home" },
     states: {
       home: { ...exits },
       list: { ...exits },
@@ -67,7 +67,7 @@ test("a guarded slot cannot drop into a state outside its union either", () => {
 
 test("guarded slots infer their parameters when written inline", () => {
   const _def: Definition<FlowState, FlowAction> = {
-    initial: { kind: "home" },
+    initial: { step: "home" },
     states: {
       home: {},
       list: {},
@@ -89,7 +89,7 @@ test("guarded slots infer their parameters when written inline", () => {
 
 test("guarded slots type-check inline with annotated parameters", () => {
   const _def: Definition<FlowState, FlowAction> = {
-    initial: { kind: "home" },
+    initial: { step: "home" },
     states: {
       home: {},
       list: {},
@@ -118,19 +118,19 @@ test("unknown action keys are rejected", () => {
 test("handlers must return the state union", () => {
   const _map: HandlerMap<FlowState, FlowAction, "drafting"> = {
     // @ts-expect-error 'nowhere' is not a state
-    goHome: () => ({ kind: "nowhere" }),
+    goHome: () => ({ step: "nowhere" }),
   };
 });
 
-test("every state kind must be present in the states map", () => {
+test("every step must be present in the states map", () => {
   const missingRevising = {
     home: {},
     list: {},
     detail: {},
     drafting: {},
   };
-  // @ts-expect-error states must name every kind — 'revising' is missing
-  const _def: Definition<FlowState, FlowAction> = { initial: { kind: "home" }, states: missingRevising };
+  // @ts-expect-error states must name every step — 'revising' is missing
+  const _def: Definition<FlowState, FlowAction> = { initial: { step: "home" }, states: missingRevising };
 });
 
 // ---------------------------------------------------------------------------
@@ -138,9 +138,9 @@ test("every state kind must be present in the states map", () => {
 // ---------------------------------------------------------------------------
 
 type SearchState =
-  | { kind: "idle" }
-  | { kind: "searching"; query: string }
-  | { kind: "failed"; reason: string };
+  | { step: "idle" }
+  | { step: "searching"; query: string }
+  | { step: "failed"; reason: string };
 
 type SearchAction =
   | { type: "search"; query: string }
@@ -153,15 +153,15 @@ type SearchDeps = {
 
 test("effects narrow their state and receive typed deps and a signal", () => {
   const _def: Definition<SearchState, SearchAction, SearchDeps> = {
-    initial: { kind: "idle" },
+    initial: { step: "idle" },
     states: {
       idle: {
-        search: (_state, action) => ({ kind: "searching", query: action.query }),
+        search: (_state, action) => ({ step: "searching", query: action.query }),
       },
       searching: {
         resolved: (_state, action) =>
-          action.found ? { kind: "idle" } : { kind: "failed", reason: "no matches" },
-        cancel: () => ({ kind: "idle" }),
+          action.found ? { step: "idle" } : { step: "failed", reason: "no matches" },
+        cancel: () => ({ step: "idle" }),
       },
       failed: {},
     },
@@ -179,12 +179,12 @@ test("effects narrow their state and receive typed deps and a signal", () => {
   };
 });
 
-test("effects only accept known state kinds", () => {
+test("effects only accept known steps", () => {
   const _def: Definition<SearchState, SearchAction, SearchDeps> = {
-    initial: { kind: "idle" },
+    initial: { step: "idle" },
     states: { idle: {}, searching: {}, failed: {} },
     effects: {
-      // @ts-expect-error 'saving' is not a state kind
+      // @ts-expect-error 'saving' is not a step of the machine
       saving: async () => ({ type: "cancel" }),
     },
   };

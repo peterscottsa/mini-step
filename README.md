@@ -31,13 +31,13 @@ That's the whole model. Everything below is just this picture written in TypeScr
 
 ## Why this instead of scattered booleans?
 
-Most UI bugs of the "that button should have been disabled" kind come from tracking one situation with several independent flags (`isLoading`, `hasError`, `isEmpty`, …) that can disagree with each other. In minism, each state carries **only the facts that exist in that situation** — an `uploading` state has a file size, a `done` state has a URL, and there is no way to be both at once. (For TypeScript readers: state and action are discriminated unions.)
+Most UI bugs of the "that button should have been disabled" kind come from tracking one situation with several independent flags (`isLoading`, `hasError`, `isEmpty`, …) that can disagree with each other. In minism, each state answers "which step are we on?" with one field — `step` — and carries **only the facts that exist at that step**: an `uploading` state has a file size, a `done` state has a URL, and there is no way to be both at once. (For TypeScript readers: state and action are discriminated unions.)
 
 ```ts
 type PublishState =
-  | { kind: "idle" }
-  | { kind: "uploading"; size: number }   // size exists only while uploading
-  | { kind: "done"; url: string };        // url exists only when done
+  | { step: "idle" }
+  | { step: "uploading"; size: number }   // size exists only while uploading
+  | { step: "done"; url: string };        // url exists only when done
 ```
 
 ## Install
@@ -55,22 +55,22 @@ A light switch — two rooms, one door each:
 ```ts
 import { createState, defineMachine } from "minism";
 
-type State = { kind: "off" } | { kind: "on"; since: number };
+type State = { step: "off" } | { step: "on"; since: number };
 type Action = { type: "powerOn"; at: number } | { type: "powerOff" };
 
 const definition = createState<State, Action>({
-  initial: { kind: "off" },
+  initial: { step: "off" },
   states: {
-    off: { powerOn: (_state, action) => ({ kind: "on", since: action.at }) },
-    on: { powerOff: () => ({ kind: "off" }) },
+    off: { powerOn: (_state, action) => ({ step: "on", since: action.at }) },
+    on: { powerOff: () => ({ step: "off" }) },
   },
 });
 
 const machine = defineMachine(definition);
 
-machine.advance({ kind: "off" }, { type: "powerOn", at: 1 }); // → { kind: "on", since: 1 }
-machine.allowed({ kind: "off" });                             // → ["powerOn"]
-machine.can({ kind: "off" }, "powerOff");                     // → false
+machine.advance({ step: "off" }, { type: "powerOn", at: 1 }); // → { step: "on", since: 1 }
+machine.allowed({ step: "off" });                             // → ["powerOn"]
+machine.can({ step: "off" }, "powerOff");                     // → false
 ```
 
 Reading it out loud: "Start switched off. In the `off` state, the only thing that can happen is `powerOn`, which moves us to `on` and remembers when. In the `on` state, the only thing that can happen is `powerOff`."
@@ -90,10 +90,10 @@ import { createState, defineMachine } from "minism";
 import type { ActionOf, StateOf } from "minism";
 
 type FlowState =
-  | { kind: "home" }
-  | { kind: "detail"; docId: string }
-  | { kind: "drafting"; view: "outline" | "preview"; title: string; tags: string[] }
-  | { kind: "revising"; view: "outline" | "preview"; title: string; tags: string[]; docId: string };
+  | { step: "home" }
+  | { step: "detail"; docId: string }
+  | { step: "drafting"; view: "outline" | "preview"; title: string; tags: string[] }
+  | { step: "revising"; view: "outline" | "preview"; title: string; tags: string[]; docId: string };
 
 type FlowAction =
   | { type: "goHome" }
@@ -120,20 +120,20 @@ const editDoc = {
 
 // Ways out, valid from anywhere.
 const exits = {
-  goHome: (): FlowState => ({ kind: "home" }),
+  goHome: (): FlowState => ({ step: "home" }),
   saveSuccess: (_state: FlowState, action: Act<"saveSuccess">): FlowState => ({
-    kind: "detail",
+    step: "detail",
     docId: action.docId,
   }),
 };
 
 const flow = defineMachine(
   createState<FlowState, FlowAction>({
-    initial: { kind: "home" },
+    initial: { step: "home" },
     states: {
       home: {
         startDraft: (): FlowState => ({
-          kind: "drafting", view: "outline", title: "", tags: [],
+          step: "drafting", view: "outline", title: "", tags: [],
         }),
       },
       detail: { goHome: exits.goHome },
@@ -154,8 +154,8 @@ Sometimes an action should exist in a state but only be available under a condit
 import { createState, defineMachine, guarded } from "minism";
 
 type CartState =
-  | { kind: "editing"; items: string[] }
-  | { kind: "payment"; items: string[] };
+  | { step: "editing"; items: string[] }
+  | { step: "payment"; items: string[] };
 
 type CartAction =
   | { type: "addItem"; item: string }
@@ -163,7 +163,7 @@ type CartAction =
 
 const cart = defineMachine(
   createState<CartState, CartAction>({
-    initial: { kind: "editing", items: [] },
+    initial: { step: "editing", items: [] },
     states: {
       editing: {
         addItem: (state, action) => ({
@@ -174,7 +174,7 @@ const cart = defineMachine(
         // The checkout door exists, but it's locked while the cart is empty.
         checkout: guarded(
           (state) => state.items.length > 0,
-          (state) => ({ kind: "payment", items: state.items }),
+          (state) => ({ step: "payment", items: state.items }),
         ),
       },
       payment: {},
@@ -205,11 +205,11 @@ Talking to a server takes time. In minism, every wait is its own state, and the 
 import { createState, defineMachine } from "minism";
 
 type PublishState =
-  | { kind: "idle" }
-  | { kind: "checkingQuota"; size: number }
-  | { kind: "uploading"; size: number }
-  | { kind: "done"; url: string }
-  | { kind: "failed"; reason: "quotaExceeded" | "network"; retryable: boolean };
+  | { step: "idle" }
+  | { step: "checkingQuota"; size: number }
+  | { step: "uploading"; size: number }
+  | { step: "done"; url: string }
+  | { step: "failed"; reason: "quotaExceeded" | "network"; retryable: boolean };
 
 type PublishAction =
   | { type: "begin"; size: number }
@@ -225,24 +225,24 @@ type PublishDeps = {
 };
 
 const publish = createState<PublishState, PublishAction, PublishDeps>({
-  initial: { kind: "idle" },
+  initial: { step: "idle" },
   states: {
     idle: {
-      begin: (_state, action) => ({ kind: "checkingQuota", size: action.size }),
+      begin: (_state, action) => ({ step: "checkingQuota", size: action.size }),
     },
     checkingQuota: {
       quotaResolved: (state, action) =>
         action.sufficient
-          ? { kind: "uploading", size: state.size }
-          : { kind: "failed", reason: "quotaExceeded", retryable: false },
-      cancel: () => ({ kind: "idle" }),
+          ? { step: "uploading", size: state.size }
+          : { step: "failed", reason: "quotaExceeded", retryable: false },
+      cancel: () => ({ step: "idle" }),
     },
     uploading: {
-      uploadSucceeded: (_state, action) => ({ kind: "done", url: action.url }),
-      uploadFailed: () => ({ kind: "failed", reason: "network", retryable: true }),
-      cancel: () => ({ kind: "idle" }),
+      uploadSucceeded: (_state, action) => ({ step: "done", url: action.url }),
+      uploadFailed: () => ({ step: "failed", reason: "network", retryable: true }),
+      cancel: () => ({ step: "idle" }),
     },
-    failed: { retry: () => ({ kind: "idle" }), cancel: () => ({ kind: "idle" }) },
+    failed: { retry: () => ({ step: "idle" }), cancel: () => ({ step: "idle" }) },
     done: {},
   },
   effects: {
@@ -283,9 +283,9 @@ function PublishButton({ deps }: { deps: PublishDeps }) {
         Publish
       </button>
 
-      {(state.kind === "checkingQuota" || state.kind === "uploading") && <Spinner />}
+      {(state.step === "checkingQuota" || state.step === "uploading") && <Spinner />}
 
-      {state.kind === "failed" && state.retryable && (
+      {state.step === "failed" && state.retryable && (
         <button onClick={() => send({ type: "retry" })}>Try again</button>
       )}
     </>
@@ -301,16 +301,16 @@ Keep human-readable text **out** of your states. Store a short code instead, and
 
 ```ts
 type PublishState =
-  | { kind: "uploading"; size: number }
+  | { step: "uploading"; size: number }
   // In the machine: a code, not a sentence.
-  | { kind: "failed"; reason: "quotaExceeded" | "network"; retryable: boolean };
+  | { step: "failed"; reason: "quotaExceeded" | "network"; retryable: boolean };
 ```
 
 ```tsx
 // In the component: words, translated at the moment of display.
 function PublishError({ state }: { state: PublishState }) {
   const t = useT(); // your app's translation hook
-  if (state.kind !== "failed") return null;
+  if (state.step !== "failed") return null;
   return <ErrorBanner>{t(`publish.error.${state.reason}`)}</ErrorBanner>;
 }
 ```
@@ -329,9 +329,9 @@ import { createState, defineMachine } from "minism";
 
 // Describe the shapes once, with zod. The TypeScript types are derived from
 // the schemas, so the checking and the types can never disagree.
-const StateSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("off") }),
-  z.object({ kind: z.literal("on"), since: z.number() }),
+const StateSchema = z.discriminatedUnion("step", [
+  z.object({ step: z.literal("off") }),
+  z.object({ step: z.literal("on"), since: z.number() }),
 ]);
 type SwitchState = z.infer<typeof StateSchema>;
 
@@ -343,10 +343,10 @@ type SwitchAction = z.infer<typeof ActionSchema>;
 
 const machine = defineMachine(
   createState<SwitchState, SwitchAction>({
-    initial: { kind: "off" },
+    initial: { step: "off" },
     states: {
-      off: { powerOn: (_state, action) => ({ kind: "on", since: action.at }) },
-      on: { powerOff: () => ({ kind: "off" }) },
+      off: { powerOn: (_state, action) => ({ step: "on", since: action.at }) },
+      on: { powerOff: () => ({ step: "off" }) },
     },
     schema: { state: StateSchema, action: ActionSchema },
   }),

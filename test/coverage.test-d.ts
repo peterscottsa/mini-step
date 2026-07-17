@@ -3,7 +3,7 @@ import { assertCoverage, createStrictState } from "../src/index";
 import type { StateOf } from "../src/index";
 import { flowMachine } from "./fixtures/flow";
 
-type ToggleState = { kind: "on" } | { kind: "off" };
+type ToggleState = { step: "on" } | { step: "off" };
 type ToggleAction = { type: "toggle" } | { type: "reset" } | { type: "disable" };
 
 test("assertCoverage rejects an incomplete action-type list", () => {
@@ -13,17 +13,17 @@ test("assertCoverage rejects an incomplete action-type list", () => {
 
 test("createStrictState accepts a definition that handles every action", () => {
   createStrictState<ToggleState, ToggleAction>()({
-    initial: { kind: "off" },
+    initial: { step: "off" },
     states: {
       on: {
         toggle: (state) => {
           // The constraint still contextually narrows handler parameters.
           expectTypeOf(state).toEqualTypeOf<StateOf<ToggleState, "on">>();
-          return { kind: "off" };
+          return { step: "off" };
         },
-        disable: () => ({ kind: "off" }),
+        disable: () => ({ step: "off" }),
       },
-      off: { toggle: () => ({ kind: "on" }), reset: () => ({ kind: "off" }) },
+      off: { toggle: () => ({ step: "on" }), reset: () => ({ step: "off" }) },
     },
   });
 });
@@ -31,10 +31,10 @@ test("createStrictState accepts a definition that handles every action", () => {
 test("createStrictState rejects a definition with an unhandled action", () => {
   // @ts-expect-error 'reset' and 'disable' are handled by no state
   createStrictState<ToggleState, ToggleAction>()({
-    initial: { kind: "off" },
+    initial: { step: "off" },
     states: {
-      on: { toggle: () => ({ kind: "off" }) },
-      off: { toggle: () => ({ kind: "on" }) },
+      on: { toggle: () => ({ step: "off" }) },
+      off: { toggle: () => ({ step: "on" }) },
     },
   });
 });
