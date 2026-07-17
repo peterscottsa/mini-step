@@ -66,13 +66,13 @@ function decodeWith<T>(
 ): StandardSchemaV1.Result<T> {
   if (!schema) {
     throw new Error(
-      `[minism] No ${slot} schema configured — set \`schema.${slot}\` in the definition to decode ${slot}s.`,
+      `[mini-step] No ${slot} schema configured — set \`schema.${slot}\` in the definition to decode ${slot}s.`,
     );
   }
   const result = schema["~standard"].validate(input);
   if (result instanceof Promise) {
     throw new Error(
-      "[minism] Async schemas are not supported — validation must be synchronous.",
+      "[mini-step] Async schemas are not supported — validation must be synchronous.",
     );
   }
   return result;
@@ -94,7 +94,7 @@ export function defineMachine<
     if (!slot) {
       if (inDev()) {
         console.warn(
-          `[minism] Action "${action.type}" is not allowed in state "${state.step}" — ignored.`,
+          `[mini-step] Action "${action.type}" is not allowed in state "${state.step}" — ignored.`,
         );
       }
       return state;
@@ -105,7 +105,7 @@ export function defineMachine<
     if (!slot.guard(state)) {
       if (inDev()) {
         console.warn(
-          `[minism] Action "${action.type}" declined by guard in state "${state.step}" — ignored.`,
+          `[mini-step] Action "${action.type}" declined by guard in state "${state.step}" — ignored.`,
         );
       }
       return state;

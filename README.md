@@ -1,8 +1,8 @@
-# minism
+# mini-step
 
 A tiny library for describing what your app is allowed to do next.
 
-You describe your feature as a set of **states** (the situations it can be in), the **actions** allowed in each state (the things that can happen there), and what each action leads to. minism then answers three questions for you, at any moment:
+You describe your feature as a set of **states** (the situations it can be in), the **actions** allowed in each state (the things that can happen there), and what each action leads to. mini-step then answers three questions for you, at any moment:
 
 - What situation are we in right now?
 - What is the user allowed to do right now?
@@ -31,7 +31,7 @@ That's the whole model. Everything below is just this picture written in TypeScr
 
 ## Why this instead of scattered booleans?
 
-Most UI bugs of the "that button should have been disabled" kind come from tracking one situation with several independent flags (`isLoading`, `hasError`, `isEmpty`, …) that can disagree with each other. In minism, each state answers "which step are we on?" with one field — `step` — and carries **only the facts that exist at that step**: an `uploading` state has a file size, a `done` state has a URL, and there is no way to be both at once. (For TypeScript readers: state and action are discriminated unions.)
+Most UI bugs of the "that button should have been disabled" kind come from tracking one situation with several independent flags (`isLoading`, `hasError`, `isEmpty`, …) that can disagree with each other. In mini-step, each state answers "which step are we on?" with one field — `step` — and carries **only the facts that exist at that step**: an `uploading` state has a file size, a `done` state has a URL, and there is no way to be both at once. (For TypeScript readers: state and action are discriminated unions.)
 
 ```ts
 type PublishState =
@@ -43,7 +43,7 @@ type PublishState =
 ## Install
 
 ```sh
-npm install minism
+npm install mini-step
 ```
 
 Works with TypeScript 5+ in `strict` mode. React (version 18 or newer) is only needed if you use the React hook.
@@ -53,7 +53,7 @@ Works with TypeScript 5+ in `strict` mode. React (version 18 or newer) is only n
 A light switch — two rooms, one door each:
 
 ```ts
-import { createState, defineMachine } from "minism";
+import { createState, defineMachine } from "mini-step";
 
 type State = { step: "off" } | { step: "on"; since: number };
 type Action = { type: "powerOn"; at: number } | { type: "powerOff" };
@@ -86,8 +86,8 @@ Reading it out loud: "Start switched off. In the `off` state, the only thing tha
 A writing app where you can draft a **new** document or revise an **existing** one. The two situations are different (revising knows which document it came from), but almost every editing action works the same in both. You write those shared actions once, as a plain object, and spread it into both states:
 
 ```ts
-import { createState, defineMachine } from "minism";
-import type { ActionOf, StateOf } from "minism";
+import { createState, defineMachine } from "mini-step";
+import type { ActionOf, StateOf } from "mini-step";
 
 type FlowState =
   | { step: "home" }
@@ -151,7 +151,7 @@ The compiler keeps this honest: `editDoc` reads editing-only facts (like `title`
 Sometimes an action should exist in a state but only be available under a condition. Wrap the action with `guarded(condition, whatHappens)`:
 
 ```ts
-import { createState, defineMachine, guarded } from "minism";
+import { createState, defineMachine, guarded } from "mini-step";
 
 type CartState =
   | { step: "editing"; items: string[] }
@@ -199,10 +199,10 @@ The condition only looks at the current state, and it should be a quick, side-ef
 
 ### 3. Waiting for slow things: effects
 
-Talking to a server takes time. In minism, every wait is its own state, and the state declares what work starts when you enter it. When the work finishes, it reports back as an ordinary action. Publishing a file:
+Talking to a server takes time. In mini-step, every wait is its own state, and the state declares what work starts when you enter it. When the work finishes, it reports back as an ordinary action. Publishing a file:
 
 ```ts
-import { createState, defineMachine } from "minism";
+import { createState, defineMachine } from "mini-step";
 
 type PublishState =
   | { step: "idle" }
@@ -272,7 +272,7 @@ One rule to remember: an effect that fails should catch its own error and return
 ### 4. Using it in React
 
 ```tsx
-import { useMachine } from "minism/react";
+import { useMachine } from "mini-step/react";
 
 function PublishButton({ deps }: { deps: PublishDeps }) {
   const { state, send, can } = useMachine(publishMachine, deps);
@@ -321,11 +321,11 @@ Two practical reasons: if the user switches language while an error is on screen
 
 TypeScript can only vouch for data born inside your program. Saved state you restore on the next launch, a link someone opens, an event pushed from a server — those arrive as "could be anything" and need checking at the door. Give the machine a schema and it gains two checkers: `decodeState` and `decodeAction`.
 
-minism has no schema library of its own and adds no dependency — it accepts schemas from any library that follows the [Standard Schema](https://standardschema.dev) convention (zod, valibot, arktype). Here it is with zod:
+mini-step has no schema library of its own and adds no dependency — it accepts schemas from any library that follows the [Standard Schema](https://standardschema.dev) convention (zod, valibot, arktype). Here it is with zod:
 
 ```ts
 import { z } from "zod";
-import { createState, defineMachine } from "minism";
+import { createState, defineMachine } from "mini-step";
 
 // Describe the shapes once, with zod. The TypeScript types are derived from
 // the schemas, so the checking and the types can never disagree.
@@ -371,7 +371,7 @@ Bad data never throws — you get back either `{ value }` (checked and typed) or
 Every state must be present in the definition — TypeScript enforces that. But forgetting to handle one *action* anywhere is only a warning at runtime. One line in a test closes the gap:
 
 ```ts
-import { assertCoverage } from "minism";
+import { assertCoverage } from "mini-step";
 
 test("every action is handled somewhere", () => {
   assertCoverage(publishMachine, [
@@ -384,13 +384,13 @@ It fails with the names of any actions no state handles — and the list you pas
 
 ## Good to know
 
-- **Development warnings, production silence.** Sending an action a state doesn't list, or one whose lock is closed, does nothing — and logs a console warning in development so you notice. minism never shows text to your users; anything they see comes from your own states.
+- **Development warnings, production silence.** Sending an action a state doesn't list, or one whose lock is closed, does nothing — and logs a console warning in development so you notice. mini-step never shows text to your users; anything they see comes from your own states.
 - **`advance` is a plain function.** No framework needed to test a machine — call `advance` with a state and an action, look at what comes back.
 - **Machines should be created once**, at the top level of a file, not inside a component.
 
 ## When *not* to use it
 
-If a value can be calculated from data you already have ("is the cart total above the minimum?"), you don't need a machine — just calculate it where you show it. minism is for situations the app must *remember* — where the same event should do different things depending on what happened before. And if you need big-ticket features like nested or parallel states and visual diagrams, use [XState](https://xstate.js.org); minism is deliberately the small version.
+If a value can be calculated from data you already have ("is the cart total above the minimum?"), you don't need a machine — just calculate it where you show it. mini-step is for situations the app must *remember* — where the same event should do different things depending on what happened before. And if you need big-ticket features like nested or parallel states and visual diagrams, use [XState](https://xstate.js.org); mini-step is deliberately the small version.
 
 ## API reference
 
@@ -399,7 +399,7 @@ If a value can be calculated from data you already have ("is the cart total abov
 | `createState<State, Action, Deps>(definition)` | Author a machine definition. Pins the types so every handler is checked precisely. |
 | `defineMachine(definition)` | Turn a definition into a runnable machine: `{ initial, advance, allowed, can, definition }`. |
 | `guarded(condition, handler)` | Put a lock on one action: the handler runs only while the condition holds. |
-| `useMachine(machine, deps?)` — from `minism/react` | Run a machine in a component: `{ state, send, allowed, can }`. |
+| `useMachine(machine, deps?)` — from `mini-step/react` | Run a machine in a component: `{ state, send, allowed, can }`. |
 | `machine.decodeState(value)` / `machine.decodeAction(value)` | Check outside data against the definition's schemas; get a typed value or a list of problems. |
 | `assertCoverage(machine, allActionTypes)` | Test helper: fails if any action is handled nowhere. |
 | `createStrictState<State, Action, Deps>()(definition)` | Like `createState`, but unhandled actions fail the build. |

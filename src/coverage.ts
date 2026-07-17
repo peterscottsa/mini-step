@@ -56,7 +56,7 @@ export function assertCoverage<
   );
   if (missing.length > 0) {
     throw new Error(
-      `[minism] Uncovered action types: ${missing
+      `[mini-step] Uncovered action types: ${missing
         .map((actionType) => `"${actionType}"`)
         .join(", ")} — no state handles them.`,
     );

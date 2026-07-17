@@ -1,5 +1,5 @@
 {
-  "name": "minism",
+  "name": "mini-step",
   "version": "0.1.0",
   "description": "Tiny declarative state machines over discriminated unions — per-state typed data, shared transition groups, async as states + effects. Zero dependencies.",
   "keywords": [
@@ -15,7 +15,7 @@
   "author": "Peter Scott",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/peterscottsa/minism.git"
+    "url": "git+https://github.com/peterscottsa/mini-step.git"
   },
   "type": "module",
   "sideEffects": false,

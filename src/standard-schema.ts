@@ -1,7 +1,7 @@
 /**
  * The Standard Schema interface, version 1 — vendored verbatim from the spec
  * (https://standardschema.dev), which is MIT-licensed and designed to be
- * copied into libraries. Type-only: nothing here exists at runtime, so minism
+ * copied into libraries. Type-only: nothing here exists at runtime, so mini-step
  * stays dependency-free while accepting schemas from any implementing
  * library (zod ≥ 3.24, valibot, arktype, and others).
  */

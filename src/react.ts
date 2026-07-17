@@ -1,4 +1,4 @@
-// React adapter — published as `minism/react`. React is an optional peer
+// React adapter — published as `mini-step/react`. React is an optional peer
 // dependency; the core entry never imports it.
 
 import { useCallback, useEffect, useReducer, useRef } from "react";
@@ -82,7 +82,7 @@ export function useMachine<S extends StateBase, A extends ActionBase, D>(
       (error: unknown) => {
         if (!signal.aborted && inDev()) {
           console.warn(
-            `[minism] Effect for state "${state.step}" rejected — effects should map their errors to a failure action.`,
+            `[mini-step] Effect for state "${state.step}" rejected — effects should map their errors to a failure action.`,
             error,
           );
         }

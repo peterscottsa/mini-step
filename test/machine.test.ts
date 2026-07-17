@@ -55,7 +55,7 @@ describe("illegal actions", () => {
     expect(next).toBe(flowMachine.initial);
     expect(warn).toHaveBeenCalledOnce();
     expect(warn).toHaveBeenCalledWith(
-      '[minism] Action "showPreview" is not allowed in state "home" — ignored.',
+      '[mini-step] Action "showPreview" is not allowed in state "home" — ignored.',
     );
   });
 
@@ -95,7 +95,7 @@ describe("guards", () => {
     const next = flowMachine.advance(untitled, { type: "showPreview" });
     expect(next).toBe(untitled);
     expect(warn).toHaveBeenCalledExactlyOnceWith(
-      '[minism] Action "showPreview" declined by guard in state "drafting" — ignored.',
+      '[mini-step] Action "showPreview" declined by guard in state "drafting" — ignored.',
     );
   });
 

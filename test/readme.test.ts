@@ -21,7 +21,7 @@ import { describe, expect, it } from "vitest";
 
 const projectRoot = path.resolve(__dirname, "..");
 const readme = readFileSync(path.join(projectRoot, "README.md"), "utf8");
-const workDir = path.join(projectRoot, "node_modules", ".cache", "minism-readme");
+const workDir = path.join(projectRoot, "node_modules", ".cache", "mini-step-readme");
 
 type Block = { lang: string; code: string; line: number };
 
@@ -46,7 +46,7 @@ declare function test(name: string, fn: () => void | Promise<void>): void;
 // copy inline and is compiled standalone, so drift between this context and
 // the README shows up as a compile error in the consuming blocks.
 const PUBLISH_CONTEXT = `
-import type { Machine as MinismMachine } from "minism";
+import type { Machine as MinismMachine } from "mini-step";
 type PublishState =
   | { step: "idle" }
   | { step: "checkingQuota"; size: number }
@@ -87,10 +87,10 @@ const tsconfig = {
     lib: ["es2022", "dom"],
     types: ["node"],
     skipLibCheck: true,
-    // Relative to this generated tsconfig's directory (node_modules/.cache/minism-readme).
+    // Relative to this generated tsconfig's directory (node_modules/.cache/mini-step-readme).
     paths: {
-      minism: ["../../../src/index.ts"],
-      "minism/react": ["../../../src/react.ts"],
+      "mini-step": ["../../../src/index.ts"],
+      "mini-step/react": ["../../../src/react.ts"],
     },
   },
   include: ["./*.tsx"],

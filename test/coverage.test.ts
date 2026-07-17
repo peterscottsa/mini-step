@@ -64,7 +64,7 @@ describe("assertCoverage", () => {
     expect(() =>
       assertCoverage(machine, ["toggle", "reset", "disable"]),
     ).toThrowError(
-      '[minism] Uncovered action types: "reset", "disable" — no state handles them.',
+      '[mini-step] Uncovered action types: "reset", "disable" — no state handles them.',
     );
   });
 });

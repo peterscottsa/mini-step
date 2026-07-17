@@ -72,10 +72,10 @@ describe("decodeState / decodeAction", () => {
     );
 
     expect(() => bare.decodeState({ step: "off" })).toThrowError(
-      "[minism] No state schema configured — set `schema.state` in the definition to decode states.",
+      "[mini-step] No state schema configured — set `schema.state` in the definition to decode states.",
     );
     expect(() => bare.decodeAction({ type: "powerOff" })).toThrowError(
-      "[minism] No action schema configured — set `schema.action` in the definition to decode actions.",
+      "[mini-step] No action schema configured — set `schema.action` in the definition to decode actions.",
     );
   });
 
@@ -100,7 +100,7 @@ describe("decodeState / decodeAction", () => {
     );
 
     expect(() => machine.decodeState({ step: "off" })).toThrowError(
-      "[minism] Async schemas are not supported — validation must be synchronous.",
+      "[mini-step] Async schemas are not supported — validation must be synchronous.",
     );
   });
 
