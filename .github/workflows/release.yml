@@ -9,6 +9,10 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}
 permissions:
   contents: write
   pull-requests: write
+  # npm Trusted Publishing: the runner authenticates to npm via GitHub's OIDC
+  # identity — no NPM_TOKEN secret exists. Configured on npmjs.com under the
+  # package's Settings → Trusted publisher.
+  id-token: write
 
 jobs:
   release:
@@ -27,4 +31,3 @@ jobs:
           publish: npx changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
