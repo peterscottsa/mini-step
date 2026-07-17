@@ -1,0 +1,82 @@
+{
+  "name": "minism",
+  "version": "0.0.0",
+  "description": "Tiny declarative state machines over discriminated unions — per-state typed data, shared transition groups, async as states + effects. Zero dependencies.",
+  "keywords": [
+    "state-machine",
+    "fsm",
+    "finite-state-machine",
+    "discriminated-union",
+    "typescript",
+    "react",
+    "reducer"
+  ],
+  "license": "MIT",
+  "author": "Peter Scott",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/peterscottsa/minism.git"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./react": {
+      "import": {
+        "types": "./dist/react.d.mts",
+        "default": "./dist/react.mjs"
+      },
+      "require": {
+        "types": "./dist/react.d.cts",
+        "default": "./dist/react.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run test && npm run build",
+    "prepublishOnly": "npm run check"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.2.17",
+    "jsdom": "^29.1.1",
+    "react": "^19.2.7",
+    "tsdown": "^0.22.9",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}
