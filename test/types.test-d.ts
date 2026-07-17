@@ -1,42 +1,7 @@
 import { expectTypeOf, test } from "vitest";
 import type { Definition, HandlerMap, StateOf } from "../src/index";
+import { editDoc, exits } from "./fixtures/flow";
 import type { Act, Editable, FlowAction, FlowState, Previous } from "./fixtures/flow";
-
-// ---------------------------------------------------------------------------
-// Shared transition groups.
-// A handler that ignores `state` (or types it over the full union) drops into
-// any state; a handler that reads `state: Editable` drops into drafting and
-// revising only. Explicit parameter types are required because the groups are
-// defined outside the states map.
-// ---------------------------------------------------------------------------
-
-const exits = {
-  goHome: (): FlowState => ({ kind: "home" }),
-  viewList: (): FlowState => ({ kind: "list" }),
-  viewDoc: (_state: FlowState, action: Act<"viewDoc">): FlowState => ({
-    kind: "detail",
-    docId: action.docId,
-    previous: action.previous,
-  }),
-  saveSuccess: (_state: FlowState, action: Act<"saveSuccess">): FlowState => ({
-    kind: "detail",
-    docId: action.docId,
-    previous: "home",
-  }),
-};
-
-const editDoc = {
-  showOutline: (state: Editable): FlowState => ({ ...state, view: "outline" }),
-  showPreview: (state: Editable): FlowState => ({ ...state, view: "preview" }),
-  setTitle: (state: Editable, action: Act<"setTitle">): FlowState => ({
-    ...state,
-    title: action.title,
-  }),
-  setTags: (state: Editable, action: Act<"setTags">): FlowState => ({
-    ...state,
-    tags: action.tags,
-  }),
-};
 
 test("StateOf and ActionOf extract exact union members", () => {
   expectTypeOf<Act<"setTitle">>().toEqualTypeOf<{ type: "setTitle"; title: string }>();
