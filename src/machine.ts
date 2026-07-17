@@ -1,3 +1,4 @@
+import { inDev } from "./env";
 import type { ActionBase, Definition, Machine, StateBase } from "./types";
 
 /**
@@ -24,9 +25,6 @@ type Table<S extends StateBase, A extends ActionBase> = Record<
   Record<string, ((state: S, action: A) => S) | undefined> | undefined
 >;
 
-const inDev = (): boolean =>
-  typeof process === "undefined" || process.env.NODE_ENV !== "production";
-
 /**
  * Compile a definition into the runnable engine. Pure and framework-free:
  * `advance` is a plain reducer, so it unit-tests without any host.
@@ -51,6 +49,8 @@ export function defineMachine<
     return handler(state, action);
   };
 
+  // `Object.keys` is typed `string[]`; these keys are `A["type"]` by
+  // construction, since `HandlerMap` admits no other property names.
   const allowed = (state: S): A["type"][] =>
     Object.keys(table[state.kind] ?? {}) as A["type"][];
 
